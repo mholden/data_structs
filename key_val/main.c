@@ -1,4 +1,5 @@
 #include "include/linked_list.h"
+#include "include/binary_tree.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -32,8 +33,8 @@ int main(int argc, char **argv){
 	 *    index), report performance
 	 */
 
-	char *array;
-	int n, i, j;
+	int *array;
+	int next, unique, n, i, j;
 	char data_struct[NAME_LEN];
 	clock_t start, end;
 	double tot, avg;
@@ -52,7 +53,17 @@ int main(int argc, char **argv){
 		return -1;
 	}
 	
-	for(i=0; i<n; i++) array[i] = rand() % 2*n;
+	for(i=0; i<n; i++){
+		unique = 0;
+		while(!unique){
+			next = rand() % RAND_MAX;
+			for(j=0; j<i; j++){
+				if(next == array[j]) break;
+			}
+			if(j == i) unique = 1;
+		}
+		array[i] = next;
+	}
 
 	printf("Data Structure\t\tNumber of Inserts/Lookups\tTime\n");
 
@@ -68,32 +79,65 @@ int main(int argc, char **argv){
 	/* n inserts */
 	start = clock();
 	for(i=0; i<n; i++){
-		ret = ll->ops->insert(&ll->root, i, array[i]);
+		ret = ll->ops->insert(&ll->root, array[i], i);
 		if(ret) return -1;
 	}
 	end = clock();
 
 	tot = (double) (end - start) / CLOCKS_PER_SEC;
 	avg = tot / (double) n;
-	printf("%s\t\t%d inserts\t\t\t%fs\n", data_struct, n, avg);
+	printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
 
 	/* n lookups */
 	tot = 0;
 	for(i=0; i<n; i++){
 		j = rand() % n;
 		start = clock();
-		ret = ll->ops->find(ll->root, j, &val);
+		ret = ll->ops->find(ll->root, array[j], &val);
 		if(ret) return -1;
 		end = clock();
 		tot += (double) (end - start) / CLOCKS_PER_SEC;
 	}
 
 	avg = tot / (double) n;
-	printf("%s\t\t%d lookups\t\t\t%fs\n", data_struct, n, avg);
+	printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
 
 	ll_destroy(ll);
+	ll = NULL;
 
 	/* 2. Binary Search Tree */
+	struct binary_tree *bt;
+	
+	strcpy(data_struct, "binary tree");
+	
+	bt = bt_create();	
+
+	start = clock();
+	for(i=0; i<n; i++){
+		ret = bt->ops->insert(&bt->root, array[i], i);
+		if(ret) return -1;
+	}
+	end = clock();
+
+	tot = (double) (end - start) / CLOCKS_PER_SEC;
+        avg = tot / (double) n;
+        printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
+
+	tot=0;
+	for(i=0; i<n; i++){
+		j = rand() % n;
+		start = clock();
+		ret = bt->ops->find(bt->root, array[j], &val);
+		if(ret) return -1;
+		end = clock();
+		tot += (double) (end - start) / CLOCKS_PER_SEC;
+	}
+
+	avg = tot / (double) n;
+        printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
+
+	bt_destroy(bt);
+	bt = NULL;
 
 	/* 3. Hash Table */
 	

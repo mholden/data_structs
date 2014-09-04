@@ -1,5 +1,5 @@
 /*
- * Linked list definition(s).
+ * Linked list definitions.
  */
 
 struct ll_node{

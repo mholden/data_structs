@@ -21,7 +21,7 @@ static int ll_insert(struct ll_node **root, int key, int value){
 	
 	while(node->next != NULL){
 		if(node->key == key){ /* Key already exists */
-			printf("ll_insert(): Key already exists.\n");
+			printf("ll_insert(): key already exists.\n");
 			return -1;
 		}
 		else node = node->next;
@@ -89,12 +89,14 @@ struct linked_list *ll_create(){
 }
 
 void ll_destroy(struct linked_list *ll){
-	struct ll_node *node;
+	struct ll_node *node, *prev;
 	
 	node = ll->root;
+	prev = NULL;
 	while(node != NULL){
+		prev = node;	
 		node = node->next;
-		free(node);
+		free(prev);
 	}
 
 	free(ll);
