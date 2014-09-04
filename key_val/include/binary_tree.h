@@ -1,3 +1,6 @@
+#ifndef _BINARY_TREE_H
+#define _BINARY_TREE_H
+
 /*
  * Binary Tree definitions.
  */
@@ -22,3 +25,5 @@ struct binary_tree{
 
 struct binary_tree *bt_create(void);
 void bt_destroy(struct binary_tree *bt);
+
+#endif /* _BINARY_TREE_H_ */

@@ -1,3 +1,6 @@
+#ifndef _LINKED_LIST_H_
+#define _LINKED_LIST_H_
+
 /*
  * Linked list definitions.
  */
@@ -24,3 +27,5 @@ struct linked_list *ll_create(void);
 
 /* Destroy a linked list */
 void ll_destroy(struct linked_list *ll);
+
+#endif /* _LINKED_LIST_H_ */

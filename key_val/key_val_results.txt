@@ -1,0 +1,35 @@
+Data Structure		Number of Inserts/Lookups	Time
+linked list		1024 inserts			0.000002625s
+linked list		1024 lookups			0.000002702s
+binary tree		1024 inserts			0.000000259s
+binary tree		1024 lookups			0.000000585s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		2048 inserts			0.000003713s
+linked list		2048 lookups			0.000004881s
+binary tree		2048 inserts			0.000000287s
+binary tree		2048 lookups			0.000000610s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		4096 inserts			0.000007253s
+linked list		4096 lookups			0.000008275s
+binary tree		4096 inserts			0.000000311s
+binary tree		4096 lookups			0.000000645s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		8192 inserts			0.000015098s
+linked list		8192 lookups			0.000016371s
+binary tree		8192 inserts			0.000000352s
+binary tree		8192 lookups			0.000000685s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		16384 inserts			0.000028882s
+linked list		16384 lookups			0.000032277s
+binary tree		16384 inserts			0.000000378s
+binary tree		16384 lookups			0.000000742s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		32768 inserts			0.000058282s
+linked list		32768 lookups			0.000064243s
+binary tree		32768 inserts			0.000000422s
+binary tree		32768 lookups			0.000000777s
+Data Structure		Number of Inserts/Lookups	Time
+linked list		65536 inserts			0.000116903s
+linked list		65536 lookups			0.000128497s
+binary tree		65536 inserts			0.000000558s
+binary tree		65536 lookups			0.000000840s

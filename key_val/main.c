@@ -1,5 +1,6 @@
 #include "include/linked_list.h"
 #include "include/binary_tree.h"
+#include "include/hash_table.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -140,6 +141,10 @@ int main(int argc, char **argv){
 	bt = NULL;
 
 	/* 3. Hash Table */
+	struct hash_table *ht;
+
+	ht = ht_create(100);
+	ht_destroy(ht);
 	
 	return 0;
 }
