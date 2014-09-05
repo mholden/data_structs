@@ -5,15 +5,13 @@
  * Hash Table definitions.
  */
 
-struct hash_entry{
-	int key;
-	int value;
-};
+struct linked_list;
 
 struct hash_table{
-        int (*hash)(void *key);
-        struct hash_entry **table;
+        unsigned int (*hash)(void *key);
+        struct linked_list **table;
 	struct ht_ops *ops;
+	int size;
 };
 
 struct ht_ops{

@@ -87,7 +87,7 @@ int main(int argc, char **argv){
 
 	tot = (double) (end - start) / CLOCKS_PER_SEC;
 	avg = tot / (double) n;
-	printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
+	printf("%s\t\t%d inserts\t\t\t%.15fs\n", data_struct, n, avg);
 
 	/* n lookups */
 	tot = 0;
@@ -101,7 +101,7 @@ int main(int argc, char **argv){
 	}
 
 	avg = tot / (double) n;
-	printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
+	printf("%s\t\t%d lookups\t\t\t%.15fs\n", data_struct, n, avg);
 
 	ll_destroy(ll);
 	ll = NULL;
@@ -122,7 +122,7 @@ int main(int argc, char **argv){
 
 	tot = (double) (end - start) / CLOCKS_PER_SEC;
         avg = tot / (double) n;
-        printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
+        printf("%s\t\t%d inserts\t\t\t%.15fs\n", data_struct, n, avg);
 
 	tot=0;
 	for(i=0; i<n; i++){
@@ -135,7 +135,7 @@ int main(int argc, char **argv){
 	}
 
 	avg = tot / (double) n;
-        printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
+        printf("%s\t\t%d lookups\t\t\t%.15fs\n", data_struct, n, avg);
 
 	bt_destroy(bt);
 	bt = NULL;
@@ -143,7 +143,34 @@ int main(int argc, char **argv){
 	/* 3. Hash Table */
 	struct hash_table *ht;
 
-	ht = ht_create(100);
+	strcpy(data_struct, "hash table");
+
+	ht = ht_create(2*n);
+
+	start = clock();
+        for(i=0; i<n; i++){
+                ret = ht->ops->insert(ht, array[i], i);
+                if(ret) return -1;
+        }
+        end = clock();
+
+        tot = (double) (end - start) / CLOCKS_PER_SEC;
+        avg = tot / (double) n;
+        printf("%s\t\t%d inserts\t\t\t%.15fs\n", data_struct, n, avg);
+
+        tot=0;
+        for(i=0; i<n; i++){
+                j = rand() % n;
+                start = clock();
+                ret = ht->ops->find(ht, array[j], &val);
+                if(ret) return -1;
+                end = clock();
+                tot += (double) (end - start) / CLOCKS_PER_SEC;
+        }
+
+        avg = tot / (double) n;
+        printf("%s\t\t%d lookups\t\t\t%.15fs\n", data_struct, n, avg);
+
 	ht_destroy(ht);
 	
 	return 0;
