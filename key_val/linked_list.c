@@ -57,7 +57,7 @@ static int ll_find(struct ll_node *root, int key, int *value){
 		else node = node->next;
 	}
 
-	printf("ll_find(): Key doesn't exist.\n");
+	//printf("ll_find(): Key doesn't exist.\n");
 	return -1;
 }
 
