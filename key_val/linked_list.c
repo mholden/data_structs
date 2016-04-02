@@ -4,7 +4,7 @@
 
 /* Insert key-value pair into list */
 static int ll_insert(struct ll_node **root, int key, int value){
-	struct ll_node *node;
+	struct ll_node *node, *prev;
 
 	node = *root;
 	if(node == NULL){ /* Inserting at root */
@@ -19,14 +19,18 @@ static int ll_insert(struct ll_node **root, int key, int value){
         	goto init_node;
 	}
 	
-	while(node->next != NULL){
+	do {
 		if(node->key == key){ /* Key already exists */
-			printf("ll_insert(): key already exists.\n");
-			return -1;
+			//printf("ll_insert(): key already exists.\n");
+			// update it
+			goto update_node;
 		}
-		else node = node->next;
-	}
+		
+		prev = node;
+		node = node->next;
+	} while (node);
 
+	node = prev;
 	node->next = malloc(sizeof(struct ll_node));
 	if(node->next == NULL){
 		printf("ll_insert(): Out of memory?\n");
@@ -37,8 +41,10 @@ static int ll_insert(struct ll_node **root, int key, int value){
 
 init_node:
 	node->key = key;
-	node->value = value;
 	node->next = NULL;
+	
+update_node:
+	node->value = value;
 
 	return 0;
 }

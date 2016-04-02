@@ -31,7 +31,7 @@ static int ht_find(struct hash_table *ht, int key, int *value){
         hash = ht->hash((void *)key) % ht->size;
 
         if(ht->table[hash] == NULL){ /* Nothing at this index */
-                printf("ht_find(): key doesn't exist.\n");
+                //printf("ht_find(): key doesn't exist.\n");
                 return -1;
         }
 
