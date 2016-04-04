@@ -35,7 +35,7 @@ int main(int argc, char **argv){
 	 */
 
 	int *array;
-	int next, unique, n, i, j;
+	int next=0, unique, n, i, j;
 	char data_struct[NAME_LEN];
 	clock_t start, end;
 	double tot, avg;

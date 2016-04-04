@@ -52,7 +52,6 @@ update_node:
 /* Given key, find value in list */
 static int ll_find(struct ll_node *root, int key, int *value){
 	struct ll_node *node;
-	int val;
 
 	node = root;
 	while(node != NULL){

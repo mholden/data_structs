@@ -11,7 +11,7 @@ static int ht_insert(struct hash_table *ht, int key, int value){
 	unsigned int hash;
 	int ret;
 
-	hash = ht->hash((void *)key) % ht->size;
+	hash = ht->hash(key) % ht->size;
 
 	if(ht->table[hash] == NULL){ /* Nothing at this index */
 		ht->table[hash] = ll_create();
@@ -28,7 +28,7 @@ static int ht_find(struct hash_table *ht, int key, int *value){
 	unsigned int hash;
         int ret;
 
-        hash = ht->hash((void *)key) % ht->size;
+        hash = ht->hash(key) % ht->size;
 
         if(ht->table[hash] == NULL){ /* Nothing at this index */
                 //printf("ht_find(): key doesn't exist.\n");
@@ -52,18 +52,17 @@ static struct ht_ops ht_standard_ops = {
 	ht_remove
 };
 
-static unsigned int ht_standard_hash(void *key){
-	unsigned long ul_key;
+static unsigned int ht_standard_hash(unsigned long key){
 	unsigned int hash;
-	unsigned char *p;
+	char *p;
 	int i;
 
-	ul_key = (unsigned long) key;
-	p = (void *) &ul_key;
+	p = (char *) &key;
 	hash = 2166136261;
 	
 	i = 0;
-	for(i=0; i<sizeof(unsigned long); i++) hash = (hash ^ p[i]) * 16777619;
+	for(i=0; i<sizeof(unsigned long); i++)
+		hash = (hash ^ p[i]) * 16777619;
 
 	return hash;
 }

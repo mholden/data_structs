@@ -8,7 +8,7 @@
 struct linked_list;
 
 struct hash_table{
-        unsigned int (*hash)(void *key);
+        unsigned int (*hash)(unsigned long key);
         struct linked_list **table;
 	struct ht_ops *ops;
 	int size;
