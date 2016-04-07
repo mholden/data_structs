@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "7512706B13B0454D652A4F2B8F5935D25E778DBA",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "14E8FAF2874B5032E53C63289A7661AC3672760D" : 0,
+    "7512706B13B0454D652A4F2B8F5935D25E778DBA" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "C5ED6107-23BF-426B-BA05-E8111F990353",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "14E8FAF2874B5032E53C63289A7661AC3672760D" : "",
+    "7512706B13B0454D652A4F2B8F5935D25E778DBA" : "data_structs\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "data_structs",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "data_structs.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "ssh:\/\/stash.sd.apple.com\/~csuter\/tools",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "14E8FAF2874B5032E53C63289A7661AC3672760D"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/mholden\/data_structs.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "7512706B13B0454D652A4F2B8F5935D25E778DBA"
+    }
+  ]
+}
