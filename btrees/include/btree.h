@@ -29,7 +29,10 @@
 	*(uint64_t *)(&btn->data[0] + (ind * (sizeof(uint64_t) + btn->header.key_size + btn->header.val_size)))
 
 #define _pointer_from_index(btn, ind) \
-	&btn->data[0] + ((ind) * (sizeof(uint64_t) + btn->header.key_size + btn->header.val_size))
+	(&btn->data[0] + ((ind) * (sizeof(uint64_t) + btn->header.key_size + btn->header.val_size)))
+
+#define _key_from_index(btn, ind) \
+	(&btn->data[0] + sizeof(uint64_t) + (ind * (btn->header.key_size + btn->header.val_size + sizeof(uint64_t))))
 
 #define node_full(btn) \
 	(BTREE_NODE_SIZE  - sizeof(btree_node_header_t)) < (sizeof(uint64_t) + (((btn)->header.num_records + 1) * ((btn->header.key_size + (btn)->header.val_size + sizeof(uint64_t)))))
@@ -42,7 +45,7 @@ typedef struct btree_node_header {
 
 typedef struct btree_node {
 	btree_node_header_t header;
-	// records (pointer, {keys, vals, pointer}s)
+	// records (pointer, {key, val, pointer}s)
 	uint8_t data[];
 } btree_node_t;
 
@@ -59,7 +62,7 @@ typedef struct ptr_key_val_ptr {
 	key_val_ptr_t kvp;
 } ptr_key_val_ptr_t;
 
-btree_t *btree_node_create(uint32_t key_size, uint32_t val_size);
+btree_node_t *btree_node_create(uint32_t key_size, uint32_t val_size);
 #define btree_create btree_node_create
 int btree_insert(btree_t **bt, void *key, void *val);
 int btree_find(btree_t *bt, void *key, void *val);
