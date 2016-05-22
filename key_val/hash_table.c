@@ -7,7 +7,7 @@
  * Hash Table.
  */
 
-static int ht_insert(struct hash_table *ht, int key, int value){
+static int ht_insert(struct hash_table *ht, uint64_t key, uint64_t value){
 	unsigned int hash;
 	int ret;
 
@@ -24,7 +24,7 @@ static int ht_insert(struct hash_table *ht, int key, int value){
 	return 0;
 }
 
-static int ht_find(struct hash_table *ht, int key, int *value){
+static int ht_find(struct hash_table *ht, uint64_t key, uint64_t *value){
 	unsigned int hash;
         int ret;
 
@@ -41,7 +41,7 @@ static int ht_find(struct hash_table *ht, int key, int *value){
 	return 0;
 }
 
-static int ht_remove(struct hash_table *ht, int key){
+static int ht_remove(struct hash_table *ht, uint64_t key){
 	/* IMPELEMENT */
 	return 0;
 }

@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 /* Insert key-value pair into list */
-static int ll_insert(struct ll_node **root, int key, int value){
+static int ll_insert(struct ll_node **root, uint64_t key, uint64_t value){
 	struct ll_node *node, *prev;
 
 	node = *root;
@@ -50,7 +50,7 @@ update_node:
 }
 
 /* Given key, find value in list */
-static int ll_find(struct ll_node *root, int key, int *value){
+static int ll_find(struct ll_node *root, uint64_t key, uint64_t *value){
 	struct ll_node *node;
 
 	node = root;
@@ -67,7 +67,7 @@ static int ll_find(struct ll_node *root, int key, int *value){
 }
 
 /* Remove key-value pair from list */
-static int ll_remove(struct ll_node *root, int key){
+static int ll_remove(struct ll_node *root, uint64_t key){
 	/* IMPLEMENT */
 	return 0;
 }

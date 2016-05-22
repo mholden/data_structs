@@ -4,17 +4,18 @@
 /*
  * Linked list definitions.
  */
+#include <stdint.h>
 
 struct ll_node{
-	int key;
-	int value;
+	uint64_t key;
+	uint64_t value;
 	struct ll_node *next;
 };
 
 struct ll_ops{
-	int (*insert)(struct ll_node **root, int key, int value);
-	int (*find)(struct ll_node *root, int key, int *value);
-	int (*remove)(struct ll_node *root, int key);
+	int (*insert)(struct ll_node **root, uint64_t key, uint64_t value);
+	int (*find)(struct ll_node *root, uint64_t key, uint64_t *value);
+	int (*remove)(struct ll_node *root, uint64_t key);
 };
 
 struct linked_list{

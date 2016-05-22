@@ -4,20 +4,21 @@
 /*
  * Hash Table definitions.
  */
+#include <stdint.h>
 
 struct linked_list;
 
 struct hash_table{
-        unsigned int (*hash)(unsigned long key);
-        struct linked_list **table;
+	unsigned int (*hash)(unsigned long key);
+	struct linked_list **table;
 	struct ht_ops *ops;
 	int size;
 };
 
 struct ht_ops{
-	int (*insert)(struct hash_table *ht, int key, int value);
-	int (*find)(struct hash_table *ht, int key, int *value);
-	int (*remove)(struct hash_table *ht, int key);
+	int (*insert)(struct hash_table *ht, uint64_t key, uint64_t value);
+	int (*find)(struct hash_table *ht, uint64_t key, uint64_t *value);
+	int (*remove)(struct hash_table *ht, uint64_t key);
 };
 
 struct hash_table *ht_create(int size);
