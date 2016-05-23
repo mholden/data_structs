@@ -19,7 +19,7 @@ int ht_insert(struct hash_table *ht, void *key, void *value){
             return -1;
 	}
 
-	ret = ll_insert(ht->table[hash], key, value);
+	ret = ll_insert(ht->table[hash], key, value, 0);
 	if(ret)
         return -1;
 

@@ -4,7 +4,7 @@
 #include <string.h>
 
 /* Insert (/update) key-value pair into list */
-int ll_insert(struct linked_list *ll, void *key, void *value){
+int ll_insert(struct linked_list *ll, void *key, void *value, int flags){
 	struct ll_node *node, *prev;
 
 	node = ll->root;
@@ -39,7 +39,10 @@ int ll_insert(struct linked_list *ll, void *key, void *value){
 
 init_node:
 	node->key = malloc(ll->keysz);
-    node->value = malloc(ll->valsz);
+    if (flags & LL_NO_ALLOC)
+        node->value = value;
+    else
+        node->value = malloc(ll->valsz);
     if (node->key == NULL || node->value == NULL) {
         printf("ll_insert(): Out of memory?\n");
         return -1;
@@ -71,8 +74,26 @@ int ll_find(struct linked_list *ll, void *key, void *value){
 }
 
 /* Remove key-value pair from list */
-int ll_remove(struct linked_list *ll, void *key){
-	/* IMPLEMENT */
+int ll_remove(struct linked_list *ll, void *key, int flags){
+    struct ll_node *node, *prev;
+    
+    prev = NULL;
+    node = ll->root;
+    while (node != NULL) {
+        if (!ll->key_compare(node->key, key))
+            break;
+        prev = node;
+        node = node->next;
+    }
+    
+    if (node == NULL) // key doesn't exist in list
+        return -1;
+    
+    prev->next = node->next;
+    free(node->key);
+    if (!(flags & LL_NO_FREE))
+        free(node->value);
+    
 	return 0;
 }
 

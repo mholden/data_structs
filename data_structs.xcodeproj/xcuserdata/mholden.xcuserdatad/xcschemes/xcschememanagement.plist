@@ -24,6 +24,11 @@
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
+		<key>keyval copy.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>4</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
@@ -43,6 +48,11 @@
 			<true/>
 		</dict>
 		<key>2A1A9E2F1CB0886F0080330D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>2A590C051CF2C48C00FA4EBC</key>
 		<dict>
 			<key>primary</key>
 			<true/>

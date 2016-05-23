@@ -11,13 +11,12 @@
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
-            buildForAnalyzing = "YES"
-            hideIssues = "NO">
+            buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-               BuildableName = "key_val"
-               BlueprintName = "key_val"
+               BuildableName = "keyval"
+               BlueprintName = "keyval"
                ReferencedContainer = "container:data_structs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -34,8 +33,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "key_val"
-            BlueprintName = "key_val"
+            BuildableName = "keyval"
+            BlueprintName = "keyval"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -57,8 +56,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "key_val"
-            BlueprintName = "key_val"
+            BuildableName = "keyval"
+            BlueprintName = "keyval"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -76,8 +75,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "key_val"
-            BlueprintName = "key_val"
+            BuildableName = "keyval"
+            BlueprintName = "keyval"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
