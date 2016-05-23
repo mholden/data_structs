@@ -8,6 +8,19 @@
 
 #define NAME_LEN 30
 
+/* key compare function */
+static int key_compare(void *key1, void *key2){
+    int _key1, _key2;
+    
+    _key1 = *(int *)key1;
+    _key2 = *(int *)key2;
+    
+    if (_key1 == _key2)
+        return 0;
+    else
+        return (_key2 - _key1);
+}
+
 /*
  * Main.
  *
@@ -74,13 +87,13 @@ int main(int argc, char **argv){
 
 	strcpy(data_struct, "linked list");
 	
-	ll = ll_create();
+	ll = ll_create(sizeof(int), sizeof(int), key_compare);
 	if(ll == NULL) return -1;
 
 	/* n inserts */
 	start = clock();
 	for(i=0; i<n; i++){
-		ret = ll->ops->insert(&ll->root, array[i], i);
+		ret = ll_insert(ll, &array[i], &i);
 		if(ret) return -1;
 	}
 	end = clock();
@@ -94,7 +107,7 @@ int main(int argc, char **argv){
 	for(i=0; i<n; i++){
 		j = rand() % n;
 		start = clock();
-		ret = ll->ops->find(ll->root, array[j], &val);
+		ret = ll_find(ll, &array[j], &val);
 		if(ret) return -1;
 		end = clock();
 		tot += (double) (end - start) / CLOCKS_PER_SEC;
@@ -111,11 +124,11 @@ int main(int argc, char **argv){
 	
 	strcpy(data_struct, "binary tree");
 	
-	bt = bt_create();	
+	bt = bt_create(sizeof(int), sizeof(int), key_compare);
 
 	start = clock();
 	for(i=0; i<n; i++){
-		ret = bt->ops->insert(&bt->root, array[i], i);
+		ret = bt_insert(bt, &array[i], &i);
 		if(ret) return -1;
 	}
 	end = clock();
@@ -128,7 +141,7 @@ int main(int argc, char **argv){
 	for(i=0; i<n; i++){
 		j = rand() % n;
 		start = clock();
-		ret = bt->ops->find(bt->root, array[j], &val);
+		ret = bt_find(bt, &array[j], &val);
 		if(ret) return -1;
 		end = clock();
 		tot += (double) (end - start) / CLOCKS_PER_SEC;
@@ -145,32 +158,32 @@ int main(int argc, char **argv){
 
 	strcpy(data_struct, "hash table");
 
-	ht = ht_create(2*n);
+	ht = ht_create(sizeof(int), sizeof(int), key_compare, 2*n);
 	if(ht == NULL) return -1;
 
 	start = clock();
-        for(i=0; i<n; i++){
-                ret = ht->ops->insert(ht, array[i], i);
-                if(ret) return -1;
-        }
+    for(i=0; i<n; i++){
+        ret = ht_insert(ht, &array[i], &i);
+        if(ret) return -1;
+    }
+    end = clock();
+    
+    tot = (double) (end - start) / CLOCKS_PER_SEC;
+    avg = tot / (double) n;
+    printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
+    
+    tot=0;
+    for(i=0; i<n; i++){
+        j = rand() % n;
+        start = clock();
+        ret = ht_find(ht, &array[j], &val);
+        if(ret) return -1;
         end = clock();
-
-        tot = (double) (end - start) / CLOCKS_PER_SEC;
-        avg = tot / (double) n;
-        printf("%s\t\t%d inserts\t\t\t%.9fs\n", data_struct, n, avg);
-
-        tot=0;
-        for(i=0; i<n; i++){
-                j = rand() % n;
-                start = clock();
-                ret = ht->ops->find(ht, array[j], &val);
-                if(ret) return -1;
-                end = clock();
-                tot += (double) (end - start) / CLOCKS_PER_SEC;
-        }
-
-        avg = tot / (double) n;
-        printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
+        tot += (double) (end - start) / CLOCKS_PER_SEC;
+    }
+    
+    avg = tot / (double) n;
+    printf("%s\t\t%d lookups\t\t\t%.9fs\n", data_struct, n, avg);
 
 	ht_destroy(ht);
 	

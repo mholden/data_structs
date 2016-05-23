@@ -107,15 +107,15 @@ static void _udg_dfs(struct ud_graph *graph, int start_vertex, int *marked, int 
 	int vertex;
 
 	curr_node = graph->adj_list[start_vertex]->root;
-        while(curr_node != NULL){
-                vertex = curr_node->key;
-                if(!marked[vertex]){
-                        marked[vertex] = 1;
-                        path_to[vertex] = start_vertex;
-                        _udg_dfs(graph, vertex, marked, path_to);
-                }
-                curr_node = curr_node->next;
+    while(curr_node != NULL){
+        vertex = curr_node->key;
+        if(!marked[vertex]){
+            marked[vertex] = 1;
+            path_to[vertex] = start_vertex;
+            _udg_dfs(graph, vertex, marked, path_to);
         }
+        curr_node = curr_node->next;
+    }
 
 	return;
 }
@@ -190,26 +190,26 @@ static void _udg_bfs(struct ud_graph *graph, struct queue *q, int *marked, int *
 
 void udg_bfs(struct ud_graph *graph, int start_vertex, int search_vertex){
 	int *marked, *path_to;
-        int i, ret;
+    int i, ret;
 	struct queue *q;
 
-        marked = malloc(graph->num_vertices * sizeof(int));
-        if(marked == NULL){
-                printf("udg_bfs(): Out of memory?\n");
-                return;
-        }
-
-        for(i=0; i<graph->num_vertices; i++) marked[i] = 0;
-        marked[start_vertex] = 1;
-
-        path_to = malloc(graph->num_vertices * sizeof(int));
-        if(path_to == NULL){
-                printf("udg_bfs(): Out of memory?\n");
-                free(marked);
-		return;
-        }
-
-        for(i=0; i<graph->num_vertices; i++) path_to[i] = -1;
+    marked = malloc(graph->num_vertices * sizeof(int));
+    if(marked == NULL){
+        printf("udg_bfs(): Out of memory?\n");
+        return;
+    }
+    
+    for(i=0; i<graph->num_vertices; i++) marked[i] = 0;
+    marked[start_vertex] = 1;
+    
+    path_to = malloc(graph->num_vertices * sizeof(int));
+    if(path_to == NULL){
+        printf("udg_bfs(): Out of memory?\n");
+        free(marked);
+        return;
+    }
+    
+    for(i=0; i<graph->num_vertices; i++) path_to[i] = -1;
 
 	q = q_create(graph->num_vertices);
 	if(q == NULL){
@@ -226,21 +226,21 @@ void udg_bfs(struct ud_graph *graph, int start_vertex, int search_vertex){
 		return;
 	}
 
-        _udg_bfs(graph, q, marked, path_to);
-
-        if(marked[search_vertex]){
-                printf("BFS - path from %d to %d: ", start_vertex, search_vertex);
-                i = search_vertex;
-                while(i != start_vertex){
-                        printf("%d-", i);
-                        i = path_to[i];
-                }
-                printf("%d\n", start_vertex);
+    _udg_bfs(graph, q, marked, path_to);
+    
+    if(marked[search_vertex]){
+        printf("BFS - path from %d to %d: ", start_vertex, search_vertex);
+        i = search_vertex;
+        while(i != start_vertex){
+            printf("%d-", i);
+            i = path_to[i];
         }
-        else printf("BFS - no path from vertex %d to vertex %d.\n", start_vertex, search_vertex);
-
-        free(marked);
-        free(path_to);
-
-        return;
+        printf("%d\n", start_vertex);
+    }
+    else printf("BFS - no path from vertex %d to vertex %d.\n", start_vertex, search_vertex);
+    
+    free(marked);
+    free(path_to);
+    
+    return;
 }

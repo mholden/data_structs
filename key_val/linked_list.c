@@ -1,30 +1,28 @@
 #include "include/linked_list.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-/* Insert key-value pair into list */
-static int ll_insert(struct ll_node **root, uint64_t key, uint64_t value){
+/* Insert (/update) key-value pair into list */
+int ll_insert(struct linked_list *ll, void *key, void *value){
 	struct ll_node *node, *prev;
 
-	node = *root;
-	if(node == NULL){ /* Inserting at root */
-		*root = malloc(sizeof(struct ll_node));
-        	if(*root == NULL){
-                	printf("ll_insert(): Out of memory?\n");
-                	return -1;
-        	}
-
-		node = *root;
-
-        	goto init_node;
+	node = ll->root;
+	if (node == NULL) { /* Inserting at root */
+		ll->root = malloc(sizeof(struct ll_node));
+        if(ll->root == NULL){
+            printf("ll_insert(): Out of memory?\n");
+            return -1;
+        }
+        
+        node = ll->root;
+        
+        goto init_node;
 	}
 	
 	do {
-		if(node->key == key){ /* Key already exists */
-			//printf("ll_insert(): key already exists.\n");
-			// update it
+		if(!ll->key_compare(node->key, key)) /* Key already exists - update it */
 			goto update_node;
-		}
 		
 		prev = node;
 		node = node->next;
@@ -32,7 +30,7 @@ static int ll_insert(struct ll_node **root, uint64_t key, uint64_t value){
 
 	node = prev;
 	node->next = malloc(sizeof(struct ll_node));
-	if(node->next == NULL){
+	if (node->next == NULL) {
 		printf("ll_insert(): Out of memory?\n");
 		return -1;
 	}
@@ -40,45 +38,45 @@ static int ll_insert(struct ll_node **root, uint64_t key, uint64_t value){
 	node = node->next;
 
 init_node:
-	node->key = key;
+	node->key = malloc(ll->keysz);
+    node->value = malloc(ll->valsz);
+    if (node->key == NULL || node->value == NULL) {
+        printf("ll_insert(): Out of memory?\n");
+        return -1;
+    }
 	node->next = NULL;
+    
+    memcpy(node->key, key, ll->keysz);
 	
 update_node:
-	node->value = value;
+	memcpy(node->value, value, ll->valsz);
 
 	return 0;
 }
 
 /* Given key, find value in list */
-static int ll_find(struct ll_node *root, uint64_t key, uint64_t *value){
+int ll_find(struct linked_list *ll, void *key, void *value){
 	struct ll_node *node;
 
-	node = root;
-	while(node != NULL){
-		if(node->key == key){
-			*value = node->value;
+	node = ll->root;
+	while (node != NULL) {
+		if (!ll->key_compare(node->key, key)) {
+			memcpy(value, node->value, ll->valsz);
 			return 0;
 		}
 		else node = node->next;
 	}
 
-	//printf("ll_find(): Key doesn't exist.\n");
 	return -1;
 }
 
 /* Remove key-value pair from list */
-static int ll_remove(struct ll_node *root, uint64_t key){
+int ll_remove(struct linked_list *ll, void *key){
 	/* IMPLEMENT */
 	return 0;
 }
 
-static struct ll_ops ll_standard_ops = {
-	ll_insert,
-	ll_find,
-	ll_remove
-};
-
-struct linked_list *ll_create(){
+struct linked_list *ll_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2)) {
 	struct linked_list *new_ll;
 	
 	new_ll = malloc(sizeof(struct linked_list));
@@ -88,7 +86,9 @@ struct linked_list *ll_create(){
 	}
 
 	new_ll->root = NULL;
-	new_ll->ops = &ll_standard_ops;
+    new_ll->keysz = keysz;
+    new_ll->valsz = valsz;
+	new_ll->key_compare = key_compare;
 
 	return new_ll;
 }
@@ -101,6 +101,8 @@ void ll_destroy(struct linked_list *ll){
 	while(node != NULL){
 		prev = node;	
 		node = node->next;
+        free(prev->key);
+        free(prev->value);
 		free(prev);
 	}
 

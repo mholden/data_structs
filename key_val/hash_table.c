@@ -7,67 +7,63 @@
  * Hash Table.
  */
 
-static int ht_insert(struct hash_table *ht, uint64_t key, uint64_t value){
+int ht_insert(struct hash_table *ht, void *key, void *value){
 	unsigned int hash;
 	int ret;
 
-	hash = ht->hash(key) % ht->size;
+	hash = ht->hash(key, ht->keysz) % ht->size;
 
 	if(ht->table[hash] == NULL){ /* Nothing at this index */
-		ht->table[hash] = ll_create();
-		if(ht->table[hash] == NULL) return -1;
+		ht->table[hash] = ll_create(ht->keysz, ht->valsz, ht->key_compare);
+		if(ht->table[hash] == NULL)
+            return -1;
 	}
 
-	ret = ht->table[hash]->ops->insert(&ht->table[hash]->root, key, value);
-	if(ret) return -1;
+	ret = ll_insert(ht->table[hash], key, value);
+	if(ret)
+        return -1;
 
 	return 0;
 }
 
-static int ht_find(struct hash_table *ht, uint64_t key, uint64_t *value){
+int ht_find(struct hash_table *ht, void *key, void *value){
 	unsigned int hash;
-        int ret;
-
-        hash = ht->hash(key) % ht->size;
-
-        if(ht->table[hash] == NULL){ /* Nothing at this index */
-                //printf("ht_find(): key doesn't exist.\n");
-                return -1;
-        }
-
-        ret = ht->table[hash]->ops->find(ht->table[hash]->root, key, value);
-        if(ret) return -1;
+    int ret;
+    
+    hash = ht->hash(key, ht->keysz) % ht->size;
+    
+    if(ht->table[hash] == NULL){ /* Nothing at this index */
+        return -1;
+    }
+    
+    ret = ll_find(ht->table[hash], key, value);
+    if(ret)
+        return -1;
 
 	return 0;
 }
 
-static int ht_remove(struct hash_table *ht, uint64_t key){
+int ht_remove(struct hash_table *ht, uint64_t key){
 	/* IMPELEMENT */
 	return 0;
 }
 
-static struct ht_ops ht_standard_ops = {
-	ht_insert,
-	ht_find,
-	ht_remove
-};
-
-static unsigned int ht_standard_hash(unsigned long key){
+static unsigned int ht_standard_hash(void *key, size_t bytes){
 	unsigned int hash;
 	char *p;
 	int i;
 
-	p = (char *) &key;
+	p = (char *)key;
 	hash = 2166136261;
 	
 	i = 0;
-	for(i=0; i<sizeof(unsigned long); i++)
+	for(i=0; i<bytes; i++)
 		hash = (hash ^ p[i]) * 16777619;
 
 	return hash;
 }
 
-struct hash_table *ht_create(int size){
+struct hash_table *ht_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2), int size){
 	struct hash_table *ht;
 	int i;
 
@@ -86,10 +82,12 @@ struct hash_table *ht_create(int size){
 		return NULL;
 	}
 	/* Initialize all to NULL */
-	for(i=0; i<size; i++) ht->table[i] = NULL;
-	
-	ht->ops = &ht_standard_ops;
+	for(i=0; i<size; i++)
+        ht->table[i] = NULL;
 
+    ht->key_compare = key_compare;
+    ht->keysz = keysz;
+    ht->valsz = valsz;
 	ht->size = size;
 
 	return ht;
@@ -99,7 +97,8 @@ void ht_destroy(struct hash_table *ht){
 	int i;
 
 	for(i=0; i<ht->size; i++){
-		if(ht->table[i]) ll_destroy(ht->table[i]);
+		if(ht->table[i])
+            ll_destroy(ht->table[i]);
 	}
 
 	free(ht);
