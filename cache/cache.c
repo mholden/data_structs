@@ -45,7 +45,8 @@ block_t *cache_get(cache_t *cache, uint64_t blkno){
             printf("malloc() error\n");
             goto fail;
         }
-        
+
+	// XXX shouldn't hold ca_lock over the pread.. set a flag on block and use condition variable to synchronize 
         if (pread(cache->ca_fd, block->bl_data, cache->ca_blksz, blkno * cache->ca_blksz) != cache->ca_blksz) {
             printf("pread() error\n");
             goto fail;
