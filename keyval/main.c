@@ -93,7 +93,7 @@ int main(int argc, char **argv){
 	/* n inserts */
 	start = clock();
 	for(i=0; i<n; i++){
-		ret = ll_insert(ll, &array[i], &i);
+		ret = ll_insert(ll, &array[i], &i, 0);
 		if(ret) return -1;
 	}
 	end = clock();
