@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
-heap_t *heap_create(heap_compare_fn_t hcf, heap_destroy_element_fn_t hdef, heap_dump_element_fn_t hduef) {
+heap_t *heap_create(heap_ops_t *hops) {
     heap_t *new_heap = NULL;
     
     new_heap = malloc(sizeof(heap_t));
@@ -12,9 +13,7 @@ heap_t *heap_create(heap_compare_fn_t hcf, heap_destroy_element_fn_t hdef, heap_
         goto error_out;
     }
     
-    new_heap->h_compare_fn = hcf;
-    new_heap->h_destroy_element_fn = hdef;
-    new_heap->heap_dump_element_fn = hduef;
+    new_heap->h_ops = hops;
     new_heap->h_size = HEAP_START_SIZE;
     new_heap->h_heap = malloc(HEAP_START_SIZE * sizeof(void *));
     if (!new_heap->h_heap) {
@@ -36,7 +35,7 @@ error_out:
 
 void heap_destroy(heap_t *h) {
     for (int i = 0; i < h->h_nelements; i++)
-        h->h_destroy_element_fn(h->h_heap[i]);
+        h->h_ops->heap_destroy_element(h->h_heap[i]);
     free(h->h_heap);
     free(h);
 }
@@ -51,7 +50,7 @@ static void heap_upheap(heap_t *h, size_t ind) {
     child = h->h_heap[ind];
     parent = h->h_heap[pind];
     
-    if (h->h_compare_fn(parent, child) < 0) { // swap and continue
+    if (h->h_ops->heap_compare(parent, child) < 0) { // swap and continue
         h->h_heap[ind] = parent;
         h->h_heap[pind] = child;
         heap_upheap(h, pind);
@@ -83,14 +82,66 @@ error_out:
     return -1;
 }
 
-// TODO: implement
-void *heap_top(heap_t *h) {
+static void heap_downheap(heap_t *h, int ind) {
+    int cind1, cind2, scind = -1;
+    void *parent, *child1 = NULL, *child2 = NULL, *swap_child;
     
+    if (h->h_nelements == 0) return;
+    
+    assert((ind >= 0) && (ind < h->h_nelements));
+    
+    cind1 = (ind * 2) + 1;
+    cind2 = cind1 + 1;
+    
+    parent = h->h_heap[ind];
+    if (cind1 < h->h_nelements)
+        child1 = h->h_heap[cind1];
+    if (cind2 < h->h_nelements)
+        child2 = h->h_heap[cind2];
+    
+    if (child1 == NULL && child2 == NULL)
+        return;
+    
+    if (child1 == NULL)
+        scind = cind2;
+    else if (child2 == NULL)
+        scind = cind1;
+    
+    if (scind < 0) { // neither child1 nor child2 are NULL
+        if (h->h_ops->heap_compare(child1, child2) > 0)
+            scind = cind1;
+        else
+            scind = cind2;
+    }
+    
+    swap_child = h->h_heap[scind];
+    
+    if (h->h_ops->heap_compare(swap_child, parent) > 0) { // swap and continue
+        h->h_heap[ind] = swap_child;
+        h->h_heap[scind] = parent;
+        heap_downheap(h, scind);
+    }
+    
+    return;
 }
 
-// TODO: implement
-int heap_remove(heap_t *h, void *element) {
-    return 0;
+void *heap_top(heap_t *h) {
+    return h->h_heap[0];
+}
+
+void *heap_pop(heap_t *h) {
+    void *top = heap_top(h);
+    
+    if (h->h_nelements == 0)
+        goto out;
+    
+    h->h_heap[0] = h->h_heap[h->h_nelements-1];
+    h->h_heap[h->h_nelements-1] = NULL;
+    h->h_nelements--;
+    heap_downheap(h, 0);
+    
+out:
+    return top;
 }
 
 void heap_dump(heap_t *h) {
@@ -99,6 +150,6 @@ void heap_dump(heap_t *h) {
     printf("h_nelements: %d\n", h->h_nelements);
     printf("h_heap:\n");
     for (int i = 0; i < h->h_nelements; i++) {
-        h->heap_dump_element_fn(h->h_heap[i], i);
+        h->h_ops->heap_dump_element(h->h_heap[i], i);
     }
 }
