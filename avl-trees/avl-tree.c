@@ -47,7 +47,7 @@ static void _at_check(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
     rchild = atn->atn_rchild;
     lchild = atn->atn_lchild;
     if (rchild) {
-        assert(at->at_ops->ato_compare_fn(rchild->atn_data, atn->atn_data) >= 0);
+        assert(at->at_ops->ato_compare_fn(rchild->atn_data, atn->atn_data) > 0);
         _at_check(at, rchild, &rheight);
     }
     if (lchild) {
@@ -96,20 +96,35 @@ static bool atn_unbalanced(avl_tree_node_t *atn) {
         return false;
 }
 
+static bool atn_has_no_children(avl_tree_node_t *atn) {
+    if (!atn->atn_lchild && !atn->atn_rchild)
+        return true;
+    else
+        return false;
+}
+
 static int at_rotate_right(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *parent) {
     avl_tree_node_t *child, *grandchild;
-    int err = -1;
+    int8_t new_atn_balance, new_child_balance;
+    int comparison, err = -1;
     
     assert(atn_is_left_heavy(atn));
     
     child = atn->atn_lchild;
     grandchild = child->atn_rchild;
     
+    // the only case in which child is perfectly balanced is when it has no children
+    assert(!atn_is_perfectly_balanced(child) || atn_has_no_children(child));
+    
+    // move the nodes to their correct new positions:
+    
     if (!parent) { // parent == root
         assert(atn == at->at_root);
         at->at_root = child;
     } else {
-        if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) >= 0) // right side of our parent
+        comparison = at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data);
+        assert(comparison);
+        if (comparison > 0) // right side of our parent
             parent->atn_rchild = child;
         else // left side of our parent
             parent->atn_lchild = child;
@@ -117,42 +132,36 @@ static int at_rotate_right(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t
     child->atn_rchild = atn;
     atn->atn_lchild = grandchild;
     
-    //
-    // right rotation results in either a right heavy tree/subtree or a balanced
-    // tree/subtree. child is now the root of the rotated subtree. atn is now
-    // its right child.
-    //
+    // now adjust the balances of the nodes as necessary:
     
-    // deal with adjusting atn's balance first
-    if (!atn->atn_rchild && !atn->atn_lchild) {
-        atn->atn_balance = 0;
-    } else if (atn->atn_rchild && atn->atn_lchild) {
-        assert(atn_is_perfectly_balanced(atn->atn_rchild) && atn_is_perfectly_balanced(atn->atn_lchild));
-        atn->atn_balance = 0;
-    } else { // one child -> atn is right heavy
-        assert(atn->atn_rchild && !atn->atn_lchild && atn_is_perfectly_balanced(atn->atn_rchild));
-        atn->atn_balance = 1;
-    }
+    new_atn_balance = atn->atn_balance + 1;
     
-    // now deal with child
-    if ((child->atn_rchild && child->atn_lchild)) {
-        if (atn->atn_balance == 1) {
-            assert(atn_is_perfectly_balanced(child->atn_lchild) && atn_is_left_heavy(child));
-            child->atn_balance += 2;
-        } else {
-            //assert(atn_is_perfectly_balanced(child->atn_rchild) && atn_is_perfectly_balanced(child->atn_lchild));
-            child->atn_balance = 0;
+    if (atn_is_left_heavy(child)) {
+        new_atn_balance++;
+        if (atn_unbalanced(child)) {
+            //
+            // only way this can happen is if there was a pre-rotation
+            // left during the balancing of atn. if we're balancing atn,
+            // it must be unbalanced
+            //
+            assert(atn_unbalanced(atn));
+            new_atn_balance++;
         }
+        new_child_balance = 0;
+        if (!atn_unbalanced(atn))
+            new_child_balance++;
     } else {
-        assert(child->atn_rchild && !child->atn_lchild && atn_is_perfectly_balanced(atn) && parent && atn_unbalanced(parent));
-        if (atn->atn_lchild && atn->atn_rchild) {
-            // in this case, child becomes unbalanced
-            child->atn_balance = 2;
-        } else {
-            assert(!atn->atn_lchild && !atn->atn_rchild);
-            child->atn_balance = 1;
-        }
+        //
+        // we only allow right heavy or perfectly balanced children
+        // on right rotations in the case that we require the extra
+        // rotation in balancing. atn must be balanced in this case
+        //
+        assert(!atn_unbalanced(atn) && (new_atn_balance == 0));
+        new_child_balance = child->atn_balance + 1; // child may now be unbalanced
     }
+    
+    atn->atn_balance = new_atn_balance;
+    child->atn_balance = new_child_balance;
     
     return 0;
     
@@ -162,18 +171,26 @@ error_out:
 
 static int at_rotate_left(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *parent) {
     avl_tree_node_t *child, *grandchild;
-    int err = -1;
+    int8_t new_atn_balance, new_child_balance;
+    int comparison, err = -1;
     
     assert(atn_is_right_heavy(atn));
     
     child = atn->atn_rchild;
     grandchild = child->atn_lchild;
     
+    // the only case in which child is perfectly balanced is when it has no children
+    assert(!atn_is_perfectly_balanced(child) || atn_has_no_children(child));
+    
+    // move the nodes to their correct new positions:
+    
     if (!parent) { // parent == root
         assert(atn == at->at_root);
         at->at_root = child;
     } else {
-        if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) >= 0) // right side of our parent
+        comparison = at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data);
+        assert(comparison);
+        if (comparison > 0) // right side of our parent
             parent->atn_rchild = child;
         else // left side of our parent
             parent->atn_lchild = child;
@@ -181,42 +198,36 @@ static int at_rotate_left(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t 
     child->atn_lchild = atn;
     atn->atn_rchild = grandchild;
     
-    //
-    // left rotation results in either a left heavy tree/subtree or a balanced
-    // tree/subtree. child is now the root of the rotated subtree. atn is now
-    // its left child.
-    //
+    // now adjust the balances of the nodes as necessary:
     
-    // deal with adjusting atn's balance first
-    if (!atn->atn_rchild && !atn->atn_lchild) {
-        atn->atn_balance = 0;
-    } else if (atn->atn_rchild && atn->atn_lchild) {
-        assert(atn_is_perfectly_balanced(atn->atn_rchild) && atn_is_perfectly_balanced(atn->atn_lchild));
-        atn->atn_balance = 0;
-    } else { // one child -> atn is left heavy
-        assert(atn->atn_lchild && !atn->atn_rchild && atn_is_perfectly_balanced(atn->atn_lchild));
-        atn->atn_balance = -1;
-    }
+    new_atn_balance = atn->atn_balance - 1;
     
-    // now deal with child
-    if ((child->atn_rchild && child->atn_lchild)) {
-        if (atn->atn_balance == -1) {
-            assert(atn_is_perfectly_balanced(child->atn_rchild) && atn_is_right_heavy(child));
-            child->atn_balance -= 2;
-        } else {
-            //assert(atn_is_perfectly_balanced(child->atn_rchild) && atn_is_perfectly_balanced(child->atn_lchild));
-            child->atn_balance = 0;
+    if (atn_is_right_heavy(child)) {
+        new_atn_balance--;
+        if (atn_unbalanced(child)) {
+            //
+            // only way this can happen is if there was a pre-rotation
+            // left during the balancing of atn. if we're balancing atn,
+            // it must be unbalanced
+            //
+            assert(atn_unbalanced(atn));
+            new_atn_balance--;
         }
+        new_child_balance = 0;
+        if (!atn_unbalanced(atn))
+            new_child_balance--;
     } else {
-        assert(child->atn_lchild && !child->atn_rchild && atn_is_perfectly_balanced(atn) && parent && atn_unbalanced(parent));
-        if (atn->atn_lchild && atn->atn_rchild) {
-            // in this case, child becomes unbalanced
-            child->atn_balance = -2;
-        } else {
-            assert(!atn->atn_lchild && !atn->atn_rchild);
-            child->atn_balance = -1;
-        }
+        //
+        // we only allow right heavy or perfectly balanced children
+        // on right rotations in the case that we require the extra
+        // rotation in balancing. atn must be balanced in this case
+        //
+        assert(!atn_unbalanced(atn) && (new_atn_balance == 0));
+        new_child_balance = child->atn_balance - 1; // child may now be unbalanced
     }
+    
+    atn->atn_balance = new_atn_balance;
+    child->atn_balance = new_child_balance;
     
     return 0;
     
@@ -232,6 +243,7 @@ static int at_balance(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
     
     if (atn_is_right_heavy(atn)) {
         child = atn->atn_rchild;
+        assert(!atn_unbalanced(child) && !atn_is_perfectly_balanced(child));
         if (atn_is_left_heavy(child)) {
             // need the extra right rotation on child first
             err = at_rotate_right(at, child, atn);
@@ -244,6 +256,7 @@ static int at_balance(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
     } else { // atn_is_left_heavy
         assert(atn_is_left_heavy(atn));
         child = atn->atn_lchild;
+        assert(!atn_unbalanced(child) && !atn_is_perfectly_balanced(child));
         if (atn_is_right_heavy(child)) {
             // need the extra left rotation on child first
             err = at_rotate_left(at, child, atn);
@@ -255,6 +268,8 @@ static int at_balance(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
             goto error_out;
     }
     
+    assert(!atn_unbalanced(atn));
+    
     return 0;
     
 error_out:
@@ -263,14 +278,14 @@ error_out:
 
 static int _at_insert(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *parent, avl_tree_node_t *to_insert, bool *height_change) {
     bool rheight_change = false, lheight_change = false;
-    int err = -1;
+    int comparison, err = -1;
     
-    if (at->at_ops->ato_compare_fn(to_insert->atn_data, atn->atn_data) == 0) {
+    comparison = at->at_ops->ato_compare_fn(to_insert->atn_data, atn->atn_data);
+    
+    if (comparison == 0) {
         err = EEXIST;
         goto error_out;
-    }
-    
-    if (at->at_ops->ato_compare_fn(to_insert->atn_data, atn->atn_data) > 0) { // insert on right
+    } else if (comparison > 0) { // insert on right
         if (!atn->atn_rchild) {
             atn->atn_rchild = to_insert;
             rheight_change = true;
@@ -353,6 +368,7 @@ int at_insert(avl_tree_t *at, void *data) {
     
     at->at_nnodes++;
 
+    //at_dump(at);
     //at_check(at);
 
     return 0;
@@ -395,12 +411,9 @@ static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
     sub_height = (lheight > rheight) ? lheight : rheight;
     *height = sub_height + 1;
     
-    printf("** node @ %p (height %d) **\n", atn, *height);
-    printf("atn_balance: %d\n", atn->atn_balance);
-    printf("atn_data:\n");
+    printf("node @ %p: height %d atn_balance %d atn_lchild %p atn_rchild %p atn_data ", atn, *height, atn->atn_balance, lchild, rchild);
     at->at_ops->ato_dump_data_fn(atn->atn_data);
-    printf("atn_lchild %p\n", lchild);
-    printf("atn_rchild %p\n", rchild);
+    printf("\n");
     
     return;
 }
@@ -408,8 +421,7 @@ static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
 void at_dump(avl_tree_t *at) {
     int height;
     
-    printf("***** at @ %p *****\n", at);
-    printf("at_nnodes: %d\n", at->at_nnodes);
+    printf("at @ %p: at_nnodes %d\n", at, at->at_nnodes);
     _at_dump(at, at->at_root, &height);
     printf("\n");
 }

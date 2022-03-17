@@ -33,7 +33,7 @@ static void test_at_destroy_data(void *data) {
 
 static void test_at_dump_data(void *data) {
     test_at_data_t *tad = (test_at_data_t *)data;
-    printf(" tad_key: %d\n", tad->tad_key);
+    printf("tad_key: %d", tad->tad_key);
 }
 
 static avl_tree_ops_t test_at_ops = {
@@ -41,8 +41,6 @@ static avl_tree_ops_t test_at_ops = {
     .ato_destroy_data_fn = test_at_destroy_data,
     .ato_dump_data_fn = test_at_dump_data
 };
-
-
 
 //
 // case 4:              4b:
@@ -273,7 +271,7 @@ static void test_random_data_set(int num_elements) {
     
     _tad = tad;
     for (int i = 0; i < num_elements; i++) {
-        _tad->tad_key = rand() % 100;
+        _tad->tad_key = rand();
         _tad++;
     }
     
@@ -290,14 +288,17 @@ static void test_random_data_set(int num_elements) {
         memcpy(__tad, _tad, sizeof(*__tad));
         err = at_insert(at, __tad);
         while (err == EEXIST) {
-            __tad->tad_key = rand() % 100;
+            __tad->tad_key = rand();
             err = at_insert(at, __tad);
         }
         assert(err == 0);
-        at_check(at);
+        //printf("at_check %d\n", i);
+        //at_check(at);
         memcpy(_tad, __tad, sizeof(*_tad));
         _tad++;
     }
+    
+    at_check(at);
     
     //at_dump(at);
     
