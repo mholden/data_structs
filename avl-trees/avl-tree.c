@@ -24,12 +24,16 @@ error_out:
     return NULL;
 }
 
+static void _atn_destroy(avl_tree_t *at, avl_tree_node_t *atn) {
+    at->at_ops->ato_destroy_data_fn(atn->atn_data);
+    free(atn);
+}
+
 static void _at_destroy(avl_tree_t *at, avl_tree_node_t *atn) {
     if (!atn) return;
     _at_destroy(at, atn->atn_lchild);
     _at_destroy(at, atn->atn_rchild);
-    at->at_ops->ato_destroy_data_fn(atn->atn_data);
-    free(atn);
+    _atn_destroy(at, atn);
 }
 
 void at_destroy(avl_tree_t *at) {
@@ -124,9 +128,6 @@ static int at_rotate_right(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t
     child = atn->atn_lchild;
     grandchild = child->atn_rchild;
     
-    // the only case in which child is perfectly balanced is when it has no children
-    assert(!atn_is_perfectly_balanced(child) || atn_has_no_children(child));
-    
     // move the nodes to their correct new positions:
     
     if (!parent) { // parent == root
@@ -162,12 +163,6 @@ static int at_rotate_right(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t
         if (!atn_unbalanced(atn))
             new_child_balance++;
     } else {
-        //
-        // we only allow right heavy or perfectly balanced children
-        // on right rotations in the case that we require the extra
-        // rotation in balancing. atn must be balanced in this case
-        //
-        assert(!atn_unbalanced(atn) && (new_atn_balance == 0));
         new_child_balance = child->atn_balance + 1; // child may now be unbalanced
     }
     
@@ -189,9 +184,6 @@ static int at_rotate_left(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t 
     
     child = atn->atn_rchild;
     grandchild = child->atn_lchild;
-    
-    // the only case in which child is perfectly balanced is when it has no children
-    assert(!atn_is_perfectly_balanced(child) || atn_has_no_children(child));
     
     // move the nodes to their correct new positions:
     
@@ -228,12 +220,6 @@ static int at_rotate_left(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t 
         if (!atn_unbalanced(atn))
             new_child_balance--;
     } else {
-        //
-        // we only allow right heavy or perfectly balanced children
-        // on right rotations in the case that we require the extra
-        // rotation in balancing. atn must be balanced in this case
-        //
-        assert(!atn_unbalanced(atn) && (new_atn_balance == 0));
         new_child_balance = child->atn_balance - 1; // child may now be unbalanced
     }
     
@@ -254,7 +240,6 @@ static int at_balance(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
     
     if (atn_is_right_heavy(atn)) {
         child = atn->atn_rchild;
-        assert(!atn_unbalanced(child) && !atn_is_perfectly_balanced(child));
         if (atn_is_left_heavy(child)) {
             // need the extra right rotation on child first
             err = at_rotate_right(at, child, atn);
@@ -267,7 +252,6 @@ static int at_balance(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
     } else { // atn_is_left_heavy
         assert(atn_is_left_heavy(atn));
         child = atn->atn_lchild;
-        assert(!atn_unbalanced(child) && !atn_is_perfectly_balanced(child));
         if (atn_is_right_heavy(child)) {
             // need the extra left rotation on child first
             err = at_rotate_left(at, child, atn);
@@ -409,17 +393,17 @@ static int _at_find(avl_tree_t *at, avl_tree_node_t *atn, void *to_find, void **
 }
 
 int at_find(avl_tree_t *at, void *to_find, void **data) {
-    avl_tree_node_t *root;
-    
-    root = at->at_root;
-    return _at_find(at, root, to_find, data);
+    return _at_find(at, at->at_root, to_find, data);
 }
 
 static void at_get_max_for_removal(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *parent, avl_tree_node_t **max, bool *height_change) {
     bool rheight_change = false;
     
     if (!atn->atn_rchild) { // this is the max; remove it
-        parent->atn_rchild = atn->atn_lchild;
+        if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) > 0)
+            parent->atn_rchild = atn->atn_lchild;
+        else
+            parent->atn_lchild = atn->atn_lchild;
         *height_change = true;
         *max = atn;
         goto out;
@@ -460,7 +444,10 @@ static void at_get_min_for_removal(avl_tree_t *at, avl_tree_node_t *atn, avl_tre
     bool lheight_change = false;
     
     if (!atn->atn_lchild) { // this is the min; remove it
-        parent->atn_lchild = atn->atn_rchild;
+        if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) > 0)
+            parent->atn_rchild = atn->atn_rchild;
+        else
+            parent->atn_lchild = atn->atn_rchild;
         *height_change = true;
         *min = atn;
         goto out;
@@ -516,10 +503,14 @@ static int _at_remove(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
     
     if (comparison == 0) { // found it, remove it
         if (atn_has_no_children(atn)) { // leaf node
-            if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) > 0)
-                parent->atn_rchild = NULL;
-            else
-                parent->atn_lchild = NULL;
+            if (!parent) { // root node case
+                at->at_root = NULL;
+            } else {
+                if (at->at_ops->ato_compare_fn(atn->atn_data, parent->atn_data) > 0)
+                    parent->atn_rchild = NULL;
+                else
+                    parent->atn_lchild = NULL;
+            }
             if (height_change)
                 *height_change = true;
             _at_destroy(at, atn);
@@ -555,7 +546,8 @@ static int _at_remove(avl_tree_t *at, avl_tree_node_t *atn, avl_tree_node_t *par
             replacement->atn_rchild = atn->atn_rchild;
             replacement->atn_balance = atn->atn_balance;
             
-            _at_destroy(at, atn);
+            _atn_destroy(at, atn);
+            atn = replacement;
         }
     } else if (comparison > 0) {
         err = _at_remove(at, atn->atn_rchild, atn, to_remove, &rheight_change);
@@ -651,7 +643,7 @@ static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
     sub_height = (lheight > rheight) ? lheight : rheight;
     *height = sub_height + 1;
     
-    printf("node @ %p: height %d atn_balance %d atn_lchild %p atn_rchild %p atn_data ", atn, *height, atn->atn_balance, lchild, rchild);
+    printf("node @ %p: height %d atn_balance %d atn_lchild %p atn_rchild %p atn_data @ %p ", atn, *height, atn->atn_balance, lchild, rchild, atn->atn_data);
     at->at_ops->ato_dump_data_fn(atn->atn_data);
     printf("\n");
     
