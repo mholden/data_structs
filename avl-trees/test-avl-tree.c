@@ -727,7 +727,7 @@ static void test_specific_removal_cases(void) {
 static void test_random_data_set(int num_elements) {
     avl_tree_t *at;
     test_at_data_t *tad = NULL, *_tad, *__tad;
-    int err;
+    int err, remaining;
     
     printf("test_random_data_set\n");
     
@@ -778,11 +778,15 @@ static void test_random_data_set(int num_elements) {
     
     //printf("** doing removals **\n");
     
+    remaining = num_elements;
     for (int i = 0; i < num_elements; i++) {
         assert(at_remove(at, &tad[i]) == 0);
+        remaining--;
         //printf("at_check %d\n", i);
         //at_check(at);
         assert(at_find(at, &tad[i], NULL) == ENOENT);
+        if (remaining)
+            assert(at_find(at, &tad[i+(rand()%remaining)+1], NULL) == 0);
     }
     
     at_check(at);
