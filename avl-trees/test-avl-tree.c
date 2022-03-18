@@ -90,8 +90,8 @@ static void test_case_4(void) {
     assert(at_insert(at, tad[0]) == 0);
     assert(at_insert(at, tad[4]) == 0);
     assert(at_insert(at, tad[3]) == 0);
-    assert(at_insert(at, tad[2]) == 0);
     assert(at_insert(at, tad[5]) == 0);
+    assert(at_insert(at, tad[2]) == 0);
     at_check(at);
     at_destroy(at);
 }
@@ -113,8 +113,8 @@ static void test_case_4b(void) {
     assert(at_insert(at, tad[0]) == 0);
     assert(at_insert(at, tad[4]) == 0);
     assert(at_insert(at, tad[2]) == 0);
-    assert(at_insert(at, tad[3]) == 0);
     assert(at_insert(at, tad[5]) == 0);
+    assert(at_insert(at, tad[3]) == 0);
     at_check(at);
     at_destroy(at);
 }
@@ -248,13 +248,42 @@ static void test_case_1(void) {
     at_destroy(at);
 }
 
-static void test_specific_cases(void) {
+static void test_specific_insertion_cases(void) {
     test_case_1();
     test_case_2();
     test_case_3();
     test_case_3b();
     test_case_4();
     test_case_4b();
+}
+
+static void test_rcase_1(void) {
+    avl_tree_t *at;
+    test_at_data_t *tad[3];
+    
+    printf("test_case_1r\n");
+    
+    assert(at = at_create(&test_at_ops));
+    
+    for (int i = 0; i < 3; i++) {
+        assert(tad[i] = malloc(sizeof(test_at_data_t)));
+        tad[i]->tad_key = i;
+    }
+    
+    assert(at_insert(at, tad[0]) == 0);
+    assert(at_insert(at, tad[1]) == 0);
+    assert(at_insert(at, tad[2]) == 0);
+    at_check(at);
+    assert(at_remove(at, tad[0]) == 0);
+    at_check(at);
+    assert(at_find(at, tad[0], NULL) == ENOENT);
+    assert(at_find(at, tad[2], NULL) == 0);
+    assert(at_find(at, tad[1], NULL) == 0);
+    at_destroy(at);
+}
+
+static void test_specific_removal_cases(void) {
+    test_rcase_1();
 }
 
 static void test_random_data_set(int num_elements) {
@@ -300,7 +329,12 @@ static void test_random_data_set(int num_elements) {
     
     at_check(at);
     
-    //at_dump(at);
+    for (int i = 0; i < num_elements; i++) {
+        assert(at_find(at, &tad[i], (void *)&_tad) == 0);
+        assert(_tad->tad_key == tad[i].tad_key);
+    }
+    
+    // TODO: now remove everything in random order
     
     at_destroy(at);
     free(tad);
@@ -337,7 +371,8 @@ int main(int argc, char **argv) {
     
     printf("seed %llu\n", seed);
     
-    test_specific_cases();
+    test_specific_insertion_cases();
+    test_specific_removal_cases();
     
     if (num_elements)
         test_random_data_set(num_elements);

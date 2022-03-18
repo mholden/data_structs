@@ -28,7 +28,7 @@ avl_tree_t *at_create(avl_tree_ops_t *ato);
 void at_destroy(avl_tree_t *at);
 
 int at_insert(avl_tree_t *at, void *data);
-int at_find(avl_tree_t *at, void *data);
+int at_find(avl_tree_t *at, void *to_find, void **data);
 int at_remove(avl_tree_t *at, void *data);
 
 void at_check(avl_tree_t *at);
