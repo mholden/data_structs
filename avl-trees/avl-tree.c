@@ -10,7 +10,7 @@
 avl_tree_t *at_create(avl_tree_ops_t *ato) {
     avl_tree_t *at;
     
-    at = malloc(sizeof(avl_tree_t));
+    at = (avl_tree_t *)malloc(sizeof(avl_tree_t));
     if (!at) {
         printf("at_create: couldn't allocate at\n");
         goto error_out;
@@ -25,7 +25,8 @@ error_out:
 }
 
 static void _atn_destroy(avl_tree_t *at, avl_tree_node_t *atn) {
-    at->at_ops->ato_destroy_data_fn(atn->atn_data);
+    if (at->at_ops->ato_destroy_data_fn)
+        at->at_ops->ato_destroy_data_fn(atn->atn_data);
     free(atn);
 }
 
@@ -344,7 +345,7 @@ int at_insert(avl_tree_t *at, void *data) {
     avl_tree_node_t *atn = NULL;
     int err = -1;
     
-    atn = malloc(sizeof(avl_tree_node_t));
+    atn = (avl_tree_node_t *)malloc(sizeof(avl_tree_node_t));
     if (!atn) {
         printf("at_insert: malloc failed to allocate memory for atn\n");
         goto error_out;
@@ -644,7 +645,8 @@ static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
     *height = sub_height + 1;
     
     printf("node @ %p: height %d atn_balance %d atn_lchild %p atn_rchild %p atn_data @ %p ", atn, *height, atn->atn_balance, lchild, rchild, atn->atn_data);
-    at->at_ops->ato_dump_data_fn(atn->atn_data);
+    if (at->at_ops->ato_dump_data_fn)
+        at->at_ops->ato_dump_data_fn(atn->atn_data);
     printf("\n");
     
     return;

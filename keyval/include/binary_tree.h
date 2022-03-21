@@ -7,19 +7,19 @@
  * Binary Tree.
  */
 
-struct bt_node{
+typedef struct bt_node {
 	void *key;
 	void *value;
 	struct bt_node *lchild;
 	struct bt_node *rchild;
-};
+} bt_node_t;
 
-struct binary_tree{
+typedef struct binary_tree {
 	struct bt_node *root;
     int (*key_compare)(void *key1, void *key2);
     size_t keysz;
     size_t valsz;
-};
+} binary_tree_t;
 
 struct binary_tree *bt_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2));
 int bt_insert(struct binary_tree *bt, void *key, void *value);

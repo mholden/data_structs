@@ -5,6 +5,7 @@
  * Linked list.
  */
 #include <stdint.h>
+#include <stddef.h>
 
 struct ll_node{
 	void *key;

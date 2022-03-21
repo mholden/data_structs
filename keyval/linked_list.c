@@ -9,7 +9,7 @@ int ll_insert(struct linked_list *ll, void *key, void *value, int flags){
 
 	node = ll->root;
 	if (node == NULL) { /* Inserting at root */
-		ll->root = malloc(sizeof(struct ll_node));
+		ll->root = (struct ll_node *)malloc(sizeof(struct ll_node));
         if(ll->root == NULL){
             printf("ll_insert(): Out of memory?\n");
             return -1;
@@ -29,7 +29,7 @@ int ll_insert(struct linked_list *ll, void *key, void *value, int flags){
 	} while (node);
 
 	node = prev;
-	node->next = malloc(sizeof(struct ll_node));
+	node->next = (struct ll_node *)malloc(sizeof(struct ll_node));
 	if (node->next == NULL) {
 		printf("ll_insert(): Out of memory?\n");
 		return -1;
@@ -64,7 +64,8 @@ int ll_find(struct linked_list *ll, void *key, void *value){
 	node = ll->root;
 	while (node != NULL) {
 		if (!ll->key_compare(node->key, key)) {
-			memcpy(value, node->value, ll->valsz);
+            if (value)
+                memcpy(value, node->value, ll->valsz);
 			return 0;
 		}
 		else node = node->next;
@@ -100,7 +101,7 @@ int ll_remove(struct linked_list *ll, void *key, int flags){
 struct linked_list *ll_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2)) {
 	struct linked_list *new_ll;
 	
-	new_ll = malloc(sizeof(struct linked_list));
+	new_ll = (struct linked_list *)malloc(sizeof(struct linked_list));
 	if(new_ll == NULL){
 		printf("ll_create(): Out of memory?\n");
 		return NULL;

@@ -9,7 +9,7 @@ static int _bt_insert(struct bt_node **node, int (*key_compare)(void *key1, void
     
     _node = *node;
     if(_node == NULL){ /* Do the insert */
-        _node = malloc(sizeof(struct bt_node));
+        _node = (struct bt_node *)malloc(sizeof(struct bt_node));
         if(_node == NULL){
             printf("bt_insert(): Out of memory?\n");
             return -1;
@@ -59,7 +59,8 @@ static int _bt_find(struct bt_node *node, int (*key_compare)(void *key1, void *k
     
     int keycmp = key_compare(node->key, key);
     if (keycmp == 0) {
-        memcpy(value, node->value, valsz);
+        if (value)
+            memcpy(value, node->value, valsz);
         return 0;
     }
     else if (keycmp > 0)
@@ -86,7 +87,7 @@ int bt_remove(struct bt_node *root, void *key){
 struct binary_tree *bt_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2)){
 	struct binary_tree *bt;
 
-	bt = malloc(sizeof(struct binary_tree));
+	bt = (struct binary_tree *)malloc(sizeof(struct binary_tree));
 	if(bt == NULL){
 		printf("bt_create(): Out of memory?\n");
 		return NULL;

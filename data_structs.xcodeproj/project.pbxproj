@@ -23,6 +23,10 @@
 		2AA8186027DFB7120059F7FC /* test-heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AA8185F27DFB7120059F7FC /* test-heap.c */; };
 		2AA8188627E0E94F0059F7FC /* avl-tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AA8188427E0E94F0059F7FC /* avl-tree.c */; };
 		2AA8188727E0E94F0059F7FC /* test-avl-tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AA8188527E0E94F0059F7FC /* test-avl-tree.c */; };
+		2AB396B827E507B800FF27A5 /* avl-tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AA8188427E0E94F0059F7FC /* avl-tree.c */; };
+		2AB396C127E507FF00FF27A5 /* binary_tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BF91CF2A4F700FA4EBC /* binary_tree.c */; };
+		2AB396C327E89C2E00FF27A5 /* avl-comparisons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2AB396B527E5076A00FF27A5 /* avl-comparisons.cpp */; };
+		2AB396C427E8B95000FF27A5 /* hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFB1CF2A4F700FA4EBC /* hash_table.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -89,6 +93,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		2AB396BB27E507B800FF27A5 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -120,10 +133,12 @@
 		2AA8185D27DFABF50059F7FC /* heap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = heap.c; path = other/heap.c; sourceTree = SOURCE_ROOT; };
 		2AA8185F27DFB7120059F7FC /* test-heap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "test-heap.c"; path = "other/test-heap.c"; sourceTree = SOURCE_ROOT; };
 		2AA8188027E0E87C0059F7FC /* avl-trees */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "avl-trees"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2AA8188227E0E94F0059F7FC /* avl-tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "avl-tree.h"; path = "avl-trees/avl-tree.h"; sourceTree = SOURCE_ROOT; };
+		2AA8188227E0E94F0059F7FC /* avl-tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "avl-tree.h"; path = "avl-trees/include/avl-tree.h"; sourceTree = SOURCE_ROOT; };
 		2AA8188327E0E94F0059F7FC /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Makefile; path = "avl-trees/Makefile"; sourceTree = SOURCE_ROOT; };
 		2AA8188427E0E94F0059F7FC /* avl-tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "avl-tree.c"; path = "avl-trees/avl-tree.c"; sourceTree = SOURCE_ROOT; };
 		2AA8188527E0E94F0059F7FC /* test-avl-tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "test-avl-tree.c"; path = "avl-trees/test-avl-tree.c"; sourceTree = SOURCE_ROOT; };
+		2AB396B527E5076A00FF27A5 /* avl-comparisons.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "avl-comparisons.cpp"; sourceTree = "<group>"; };
+		2AB396BF27E507B800FF27A5 /* tests */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tests; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +191,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2AB396BA27E507B800FF27A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -197,6 +219,7 @@
 				2A590C111CF2C48C00FA4EBC /* cache */,
 				2AA8185827DFAB530059F7FC /* heap */,
 				2AA8188027E0E87C0059F7FC /* avl-trees */,
+				2AB396BF27E507B800FF27A5 /* tests */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -210,6 +233,7 @@
 				2A1A9E011CB06E330080330D /* graphs */,
 				2A1A9DF31CB06E060080330D /* keyval */,
 				2A1A9E081CB06E650080330D /* other */,
+				2AB396B427E5076A00FF27A5 /* tests */,
 			);
 			path = data_structs;
 			sourceTree = "<group>";
@@ -313,13 +337,30 @@
 		2AA8188127E0E8F20059F7FC /* avl-trees */ = {
 			isa = PBXGroup;
 			children = (
+				2AB396C227E5088C00FF27A5 /* include */,
 				2AA8188427E0E94F0059F7FC /* avl-tree.c */,
-				2AA8188227E0E94F0059F7FC /* avl-tree.h */,
 				2AA8188327E0E94F0059F7FC /* Makefile */,
 				2AA8188527E0E94F0059F7FC /* test-avl-tree.c */,
 			);
 			path = "avl-trees";
 			sourceTree = "<group>";
+		};
+		2AB396B427E5076A00FF27A5 /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				2AB396B527E5076A00FF27A5 /* avl-comparisons.cpp */,
+			);
+			path = tests;
+			sourceTree = SOURCE_ROOT;
+		};
+		2AB396C227E5088C00FF27A5 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				2AA8188227E0E94F0059F7FC /* avl-tree.h */,
+			);
+			name = include;
+			path = "avl-trees/include";
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
 
@@ -443,6 +484,23 @@
 			productReference = 2AA8188027E0E87C0059F7FC /* avl-trees */;
 			productType = "com.apple.product-type.tool";
 		};
+		2AB396B627E507B800FF27A5 /* tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2AB396BC27E507B800FF27A5 /* Build configuration list for PBXNativeTarget "tests" */;
+			buildPhases = (
+				2AB396B727E507B800FF27A5 /* Sources */,
+				2AB396BA27E507B800FF27A5 /* Frameworks */,
+				2AB396BB27E507B800FF27A5 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = tests;
+			productName = data_structs;
+			productReference = 2AB396BF27E507B800FF27A5 /* tests */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -477,6 +535,7 @@
 				2A590C051CF2C48C00FA4EBC /* cache */,
 				2AA8184E27DFAB530059F7FC /* heap */,
 				2AA8187727E0E87C0059F7FC /* avl-trees */,
+				2AB396B627E507B800FF27A5 /* tests */,
 			);
 		};
 /* End PBXProject section */
@@ -544,6 +603,17 @@
 			files = (
 				2AA8188627E0E94F0059F7FC /* avl-tree.c in Sources */,
 				2AA8188727E0E94F0059F7FC /* test-avl-tree.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2AB396B727E507B800FF27A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2AB396C427E8B95000FF27A5 /* hash_table.c in Sources */,
+				2AB396C327E89C2E00FF27A5 /* avl-comparisons.cpp in Sources */,
+				2AB396C127E507FF00FF27A5 /* binary_tree.c in Sources */,
+				2AB396B827E507B800FF27A5 /* avl-tree.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -729,6 +799,20 @@
 			};
 			name = Release;
 		};
+		2AB396BD27E507B800FF27A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		2AB396BE27E507B800FF27A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -800,6 +884,15 @@
 			buildConfigurations = (
 				2AA8187E27E0E87C0059F7FC /* Debug */,
 				2AA8187F27E0E87C0059F7FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2AB396BC27E507B800FF27A5 /* Build configuration list for PBXNativeTarget "tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2AB396BD27E507B800FF27A5 /* Debug */,
+				2AB396BE27E507B800FF27A5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

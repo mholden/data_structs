@@ -67,7 +67,7 @@ struct hash_table *ht_create(size_t keysz, size_t valsz, int (*key_compare)(void
 	struct hash_table *ht;
 	int i;
 
-	ht = malloc(sizeof(struct hash_table));
+	ht = (struct hash_table *)malloc(sizeof(struct hash_table));
 	if(ht == NULL){
 		printf("ht_create(): Out of memory?\n");
 		return NULL;
@@ -75,7 +75,7 @@ struct hash_table *ht_create(size_t keysz, size_t valsz, int (*key_compare)(void
 
 	ht->hash = ht_standard_hash;
 	
-	ht->table = malloc(size * sizeof(struct linked_list *));
+	ht->table = (struct linked_list **)malloc(size * sizeof(struct linked_list *));
 	if(ht->table == NULL){
 		printf("ht_create(): Out of memory?\n");
 		free(ht);
