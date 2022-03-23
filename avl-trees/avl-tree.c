@@ -16,11 +16,19 @@ avl_tree_t *at_create(avl_tree_ops_t *ato) {
         goto error_out;
     }
     memset(at, 0, sizeof(*at));
-    at->at_ops = ato;
+    at->at_ops = (avl_tree_ops_t *)malloc(sizeof(avl_tree_ops_t));
+    if (!at->at_ops) {
+        printf("at_create: couldn't allocate at_ops\n");
+        goto error_out;
+    }
+    memcpy(at->at_ops, ato, sizeof(avl_tree_ops_t));
     
     return at;
     
 error_out:
+    if (at)
+        free(at);
+    
     return NULL;
 }
 
@@ -39,6 +47,7 @@ static void _at_destroy(avl_tree_t *at, avl_tree_node_t *atn) {
 
 void at_destroy(avl_tree_t *at) {
     _at_destroy(at, at->at_root);
+    free(at->at_ops);
     free(at);
     return;
 }
@@ -619,13 +628,41 @@ int at_remove(avl_tree_t *at, void *data) {
         goto error_out;
     
     at->at_nnodes--;
-    
-    //at_check(at);
 
     return 0;
     
 error_out:
     return err;
+}
+
+// in order traversal
+static int _at_iterate(avl_tree_node_t *atn, int (*callback)(void *, void *), void *ctx) {
+    int done;
+    
+    if (!atn) return 0;
+    
+    if (atn->atn_lchild) {
+        done = _at_iterate(atn->atn_lchild, callback, ctx);
+        if (done)
+            goto out;
+    }
+    
+    done = callback(atn->atn_data, ctx);
+    if (done)
+        goto out;
+    
+    if (atn->atn_rchild) {
+        done = _at_iterate(atn->atn_rchild, callback, ctx);
+        if (done)
+            goto out;
+    }
+    
+out:
+    return done;
+}
+
+void at_iterate(avl_tree_t *at, int (*callback)(void *, void *), void *ctx) {
+    _at_iterate(at->at_root, callback, ctx);
 }
 
 static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {

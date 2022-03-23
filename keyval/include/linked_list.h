@@ -13,12 +13,12 @@ struct ll_node{
 	struct ll_node *next;
 };
 
-struct linked_list{
+typedef struct linked_list {
 	struct ll_node *root;
     size_t keysz;
     size_t valsz;
     int (*key_compare)(void *key1, void *key2);
-};
+} linked_list_t;
 
 // flags
 #define LL_NO_ALLOC     0x00000001 // don't alloc the value on an insert

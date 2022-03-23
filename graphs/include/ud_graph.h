@@ -1,37 +1,45 @@
 #ifndef _UD_GRAPH_H_
 #define _UD_GRAPH_H_
 
-/*
- * A simple undirected graph.
- */
+#include <stdbool.h>
 
-struct linked_list;
+#include "avl-tree.h"
+#include "linked_list.h"
 
-struct ud_graph{
-	int num_vertices;
-	int max_size;
-	struct linked_list **adj_list;
-	struct ud_graph_ops *ops;
-};
+typedef struct udg_path {
+    linked_list_t *p_path; // linked list of udg_node_t's
+} udg_path_t;
 
-struct ud_graph_ops{
-        int (*add_vertex)(struct ud_graph *graph, int *new_vertex);
-        int (*add_edge)(struct ud_graph *graph, int v1, int v2);
-};
+typedef struct ud_graph_ops {
+    int (*go_compare_fn)(void *, void *);
+    void (*go_destroy_data_fn)(void *);
+    void (*go_dump_data_fn)(void *);
+} ud_graph_ops_t;
 
-struct ud_graph *udg_create(int size);
-void udg_destroy(struct ud_graph *graph);
+typedef struct ud_graph {
+    avl_tree_t *g_nodes; // avl tree of udg_node_t's
+    ud_graph_ops_t *g_ops;
+} ud_graph_t;
 
-/* 
- * Depth first search - searches for any path in graph from start_vertex
- * to search_vertex, and prints the result. 
- */
-void udg_dfs(struct ud_graph *graph, int start_vertex, int search_vertex);
+typedef struct udg_node {
+    ud_graph_t *n_graph;
+    void *n_data;
+    avl_tree_t *n_adjs; // adjacencies: avl tree of udg_node_t's
+} udg_node_t;
 
-/*
- * Breadth first search - finds the shortest path in graph from start_vertex
- * to search_vertex if one exists, and prints the result.
- */
-void udg_bfs(struct ud_graph *graph, int start_vertex, int search_vertex);
+ud_graph_t *udg_create(ud_graph_ops_t *gops);
+void udg_destroy(ud_graph_t *g);
+
+int udg_add_node(ud_graph_t *g, void *data, udg_node_t **new_node);
+int udg_add_edge(ud_graph_t *g, udg_node_t *n1, udg_node_t *n2);
+
+void udg_iterate_df(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx);
+void udg_iterate_bf(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx);
+
+void udg_check(ud_graph_t *g);
+void udg_dump(ud_graph_t *g);
+
+int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path);
+int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path);
 
 #endif /* _UD_GRAPH_H_ */

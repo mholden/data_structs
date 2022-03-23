@@ -2,6 +2,7 @@
 #define _AVL_TREE_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct avl_tree_node avl_tree_node_t;
 
@@ -30,6 +31,8 @@ void at_destroy(avl_tree_t *at);
 int at_insert(avl_tree_t *at, void *data);
 int at_find(avl_tree_t *at, void *to_find, void **data);
 int at_remove(avl_tree_t *at, void *data);
+
+void at_iterate(avl_tree_t *at, int (*callback)(void *, void *), void *ctx);
 
 void at_check(avl_tree_t *at);
 void at_dump(avl_tree_t *at);

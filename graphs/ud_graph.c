@@ -1,246 +1,236 @@
-#include "include/ud_graph.h"
-#include "../key_val/include/linked_list.h"
-#include "../other/include/queue.h"
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 
-static int udg_add_vertex(struct ud_graph *graph, int *new_vertex){
-	int i;
+#include "ud_graph.h"
 
-	if(graph->num_vertices == graph->max_size){
-		printf("udg_add_vertex(): graph already at max size.\n");
-		return -1;
-	}
-
-	for(i=0; i<graph->max_size; i++){
-		if(graph->adj_list[i] == NULL) break;
-	}
-
-	graph->adj_list[i] = ll_create();
-	if(graph->adj_list[i] == NULL) return -1;
-
-	graph->num_vertices++;
-	
-	*new_vertex = i;
-	return 0;
+static int udg_compare_nodes(void *data1, void *data2) {
+    udg_node_t *n1, *n2;
+    ud_graph_t *g;
+    
+    n1 = (udg_node_t *)data1;
+    n2 = (udg_node_t *)data2;
+    assert(n1->n_graph == n2->n_graph);
+    g = n1->n_graph;
+    
+    return g->g_ops->go_compare_fn(n1->n_data, n2->n_data);
 }
 
-static int udg_add_edge(struct ud_graph *graph, int v1, int v2){
-	struct linked_list *v1_ll, *v2_ll;
-	int dummy_val, ret;
-
-	if(v1 >= graph->max_size || v2 >= graph->max_size || v1 < 0 || v2 < 0){
-		printf("udg_add_edge(): one of the vertices is invalid.\n");
-		return -1;
-	}
-
-	v1_ll = graph->adj_list[v1];
-	v2_ll = graph->adj_list[v2];
-	if(v1_ll == NULL || v2_ll == NULL){
-		printf("udg_add_edge(): one of the vertices does not exist.\n");
-		return -1;
-	}
-
-	if(!v1_ll->ops->find(v1_ll->root, v2, &dummy_val)){
-		/* Edge already exists.. do nothing */
-		return 0;
-	}
-
-	/* 
-	 * Edge doesn't exist, so add it. 
-	 * Note: 'value' in linked list is unused.
-	 */
-	ret = v1_ll->ops->insert(&v1_ll->root, v2, -1);
-	if(ret) return -1;
-
-	ret = v2_ll->ops->insert(&v2_ll->root, v1, -1);
-	if(ret) return -1;
-
-        return 0;
+static void udg_destroy_node(void *data) {
+    udg_node_t *n = (udg_node_t *)data;
+    ud_graph_t *g = n->n_graph;
+    
+    if (g->g_ops->go_destroy_data_fn)
+        g->g_ops->go_destroy_data_fn(n->n_data);
+    at_destroy(n->n_adjs);
+    free(n);
 }
 
-static struct ud_graph_ops udg_standard_ops = {
-	udg_add_vertex,
-	udg_add_edge
+static void udg_dump_node(void *data) {
+    udg_node_t *n = (udg_node_t *)data;
+    ud_graph_t *g = n->n_graph;
+    
+    printf("n_data: ");
+    if (g->g_ops->go_dump_data_fn)
+        g->g_ops->go_dump_data_fn(n->n_data);
+    printf("(num adjacencies %d) ", n->n_adjs->at_nnodes);
+}
+
+static avl_tree_ops_t udg_aops = {
+    .ato_compare_fn = udg_compare_nodes,
+    .ato_destroy_data_fn = udg_destroy_node,
+    .ato_dump_data_fn = udg_dump_node,
 };
 
-struct ud_graph *udg_create(int size){
-	struct ud_graph *graph;
-	int i;
-
-	graph = malloc(sizeof(struct ud_graph));
-	if(graph == NULL){
-		printf("udg_create(): Out of memory?\n");
-		return NULL;
-	}
-
-	graph->num_vertices = 0;
-	graph->max_size = size;
-	graph->adj_list = malloc(size * sizeof(struct linked_list *));
-	if(graph->adj_list == NULL){
-		printf("udg_create(): Out of memory?\n");
-                return NULL;
-	}
-
-	for(i=0; i<size; i++) graph->adj_list[i] = NULL;
-	
-	graph->ops = &udg_standard_ops;
-
-	return graph;
-}
-
-void udg_destroy(struct ud_graph *graph){
-	int i;
-
-	for(i=0; i<graph->max_size; i++){
-		if(graph->adj_list[i] != NULL) 
-			ll_destroy(graph->adj_list[i]);
-	}
-
-	free(graph);
-
-	return;
-}
-
-static void _udg_dfs(struct ud_graph *graph, int start_vertex, int *marked, int *path_to){
-	struct ll_node *curr_node;
-	int vertex;
-
-	curr_node = graph->adj_list[start_vertex]->root;
-    while(curr_node != NULL){
-        vertex = curr_node->key;
-        if(!marked[vertex]){
-            marked[vertex] = 1;
-            path_to[vertex] = start_vertex;
-            _udg_dfs(graph, vertex, marked, path_to);
-        }
-        curr_node = curr_node->next;
-    }
-
-	return;
-}
-
-void udg_dfs(struct ud_graph *graph, int start_vertex, int search_vertex){
-	int *marked, *path_to;
-	int i;
-
-	marked = malloc(graph->num_vertices * sizeof(int));
-	if(marked == NULL){
-		printf("udg_dfs(): Out of memory?\n");
-		return;
-	}
-
-	for(i=0; i<graph->num_vertices; i++) marked[i] = 0;
-	marked[start_vertex] = 1;
-
-	path_to = malloc(graph->num_vertices * sizeof(int));
-	if(path_to == NULL){
-		printf("udg_dfs(): Out of memory?\n");
-                return;
-	}
-
-	for(i=0; i<graph->num_vertices; i++) path_to[i] = -1;
-
-	_udg_dfs(graph, start_vertex, marked, path_to);
-
-	if(marked[search_vertex]){
-		printf("DFS - path from %d to %d: ", start_vertex, search_vertex);
-		i = search_vertex;
-		while(i != start_vertex){
-			printf("%d-", i);
-			i = path_to[i];
-		}
-		printf("%d\n", start_vertex);
-	}
-	else printf("DFS - no path from vertex %d to vertex %d.\n", start_vertex, search_vertex);
-
-	free(marked);
-	free(path_to);
-
-	return;
-}
-
-static void _udg_bfs(struct ud_graph *graph, struct queue *q, int *marked, int *path_to){
-	int *vertex;
-	int adj, ret;
-	struct ll_node *curr_node;
-
-	if(q_empty(q)) return;
-
-	ret = q_get(q, (void **)&vertex);
-	if(ret) return;
-
-	curr_node = graph->adj_list[*vertex]->root;
-	while(curr_node != NULL){
-		adj = curr_node->key;
-		if(!marked[adj]){
-			marked[adj] = 1;
-			path_to[adj] = *vertex;
-			
-			ret = q_add(q, &curr_node->key);
-			if(ret) return;
-		}
-		curr_node = curr_node->next;
-	}
-	
-	_udg_bfs(graph, q, marked, path_to);
-
-	return;
-}
-
-void udg_bfs(struct ud_graph *graph, int start_vertex, int search_vertex){
-	int *marked, *path_to;
-    int i, ret;
-	struct queue *q;
-
-    marked = malloc(graph->num_vertices * sizeof(int));
-    if(marked == NULL){
-        printf("udg_bfs(): Out of memory?\n");
-        return;
+ud_graph_t *udg_create(ud_graph_ops_t *gops) {
+    ud_graph_t *g = NULL;
+    
+    g = malloc(sizeof(ud_graph_t));
+    if (!g)
+        goto error_out;
+    
+    memset(g, 0, sizeof(g));
+    
+    g->g_nodes = at_create(&udg_aops);
+    if (!g->g_nodes)
+        goto error_out;
+    
+    g->g_ops = malloc(sizeof(ud_graph_ops_t));
+    if (!g->g_ops)
+        goto error_out;
+    
+    memcpy(g->g_ops, gops, sizeof(ud_graph_ops_t));
+    
+    return g;
+    
+error_out:
+    if (g) {
+        if (g->g_nodes)
+            at_destroy(g->g_nodes);
+        free(g);
     }
     
-    for(i=0; i<graph->num_vertices; i++) marked[i] = 0;
-    marked[start_vertex] = 1;
-    
-    path_to = malloc(graph->num_vertices * sizeof(int));
-    if(path_to == NULL){
-        printf("udg_bfs(): Out of memory?\n");
-        free(marked);
-        return;
-    }
-    
-    for(i=0; i<graph->num_vertices; i++) path_to[i] = -1;
+    return NULL;
+}
 
-	q = q_create(graph->num_vertices);
-	if(q == NULL){
-		free(marked);
-		free(path_to);
-		return;
-	}
-
-	ret = q_add(q, &start_vertex);
-	if(ret){
-		free(marked);
-		free(path_to);
-		q_destroy(q);
-		return;
-	}
-
-    _udg_bfs(graph, q, marked, path_to);
-    
-    if(marked[search_vertex]){
-        printf("BFS - path from %d to %d: ", start_vertex, search_vertex);
-        i = search_vertex;
-        while(i != start_vertex){
-            printf("%d-", i);
-            i = path_to[i];
-        }
-        printf("%d\n", start_vertex);
-    }
-    else printf("BFS - no path from vertex %d to vertex %d.\n", start_vertex, search_vertex);
-    
-    free(marked);
-    free(path_to);
-    
+void udg_destroy(ud_graph_t *g) {
+    at_destroy(g->g_nodes);
+    free(g->g_ops);
+    free(g);
     return;
+}
+
+static void udg_dump_node_adj(void *data) {
+    udg_node_t *adj = (udg_node_t *)data;
+    ud_graph_t *g = adj->n_graph;
+    
+    if (g->g_ops->go_dump_data_fn)
+        g->g_ops->go_dump_data_fn(adj->n_data);
+}
+
+static avl_tree_ops_t udg_node_aops = {
+    .ato_compare_fn = udg_compare_nodes,
+    .ato_destroy_data_fn = NULL,
+    .ato_dump_data_fn = udg_dump_node_adj,
+};
+
+int udg_add_node(ud_graph_t *g, void *data, udg_node_t **new) {
+    udg_node_t *n = NULL;
+    int err;
+    
+    assert(data);
+    
+    n = malloc(sizeof(udg_node_t));
+    if (!n) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    memset(n, 0, sizeof(*n));
+    n->n_data = data;
+    
+    n->n_adjs = at_create(&udg_node_aops);
+    if (!n->n_adjs) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    n->n_graph = g;
+    
+    err = at_insert(g->g_nodes, (void *)n);
+    if (err)
+        goto error_out;
+    
+    if (new)
+        *new = n;
+    
+    return 0;
+    
+error_out:
+    if (n) {
+        if (n->n_adjs)
+            at_destroy(n->n_adjs);
+        free(n);
+    }
+    
+    return err;
+}
+
+int udg_add_edge(ud_graph_t *g, udg_node_t *n1, udg_node_t *n2) {
+    int err;
+    
+    err = at_insert(n1->n_adjs, (void *)n2);
+    if (err)
+        goto error_out;
+    
+    err = at_insert(n2->n_adjs, (void *)n1);
+    if (err) {
+        printf("udg_add_edge: couldn't at_insert n1 into n2 adjs\n");
+        goto error_out2;
+    }
+    
+    return 0;
+    
+error_out2:
+    if (at_remove(n1->n_adjs, n2))
+        printf("udg_add_edge: failed to remove n2 from n1 adjs\n");
+    
+error_out:
+    return err;
+}
+
+static int udg_check_node_adjacencies_cb(void *data, void *ctx) {
+    udg_node_t *adj, *n;
+    
+    adj = (udg_node_t *)data;
+    n = (udg_node_t *)ctx;
+    
+    assert(at_find(adj->n_adjs, (void *)n, NULL) == 0);
+    
+    return 0;
+}
+
+static int udg_check_node_cb(void *data, void *ctx) {
+    udg_node_t *n = (udg_node_t *)data;
+    
+    // make sure all our adjacencies have us in their adjacency list
+    at_iterate(n->n_adjs, udg_check_node_adjacencies_cb, (void *)n);
+    
+    return 0;
+}
+
+void udg_check(ud_graph_t *g) {
+    at_iterate(g->g_nodes, udg_check_node_cb, NULL);
+}
+
+static int udg_dump_node_adjs_cb(void *data, void *ctx) {
+    udg_node_t *adj = (udg_node_t *)data;
+    ud_graph_t *g = adj->n_graph;
+    
+    if (g->g_ops->go_dump_data_fn)
+        g->g_ops->go_dump_data_fn(adj->n_data);
+    
+    return 0;
+}
+
+static int udg_dump_node_cb(void *data, void *ctx) {
+    udg_node_t *n = (udg_node_t *)data;
+    ud_graph_t *g = n->n_graph;
+    
+    //printf("node %p ", n);
+    //printf("n_graph: %p ", g);
+    //printf("n_data: ");
+    if (g->g_ops->go_dump_data_fn)
+        g->g_ops->go_dump_data_fn(n->n_data);
+    printf(": ");
+    at_iterate(n->n_adjs, udg_dump_node_adjs_cb, NULL);
+    printf("\n");
+    
+    return 0;
+}
+
+void udg_dump(ud_graph_t *g) {
+    at_iterate(g->g_nodes, udg_dump_node_cb, NULL);
+}
+
+// depth first iteration
+void udg_iterate_df(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx) {
+    assert(0);
+}
+
+// breadth first iteration
+void udg_iterate_bf(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx) {
+    assert(0);
+}
+
+int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path) {
+    assert(0);
+    return 0;
+}
+
+int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path) {
+    assert(0);
+    return 0;
 }

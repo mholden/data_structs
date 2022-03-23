@@ -11,13 +11,12 @@
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
-            buildForAnalyzing = "YES"
-            hideIssues = "NO">
+            buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2A1A9E0D1CB06EB30080330D"
                BuildableName = "graphs"
-               BlueprintName = "graphs"
+               BlueprintName = "ud_graphs"
                ReferencedContainer = "container:data_structs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -28,19 +27,17 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
-      <Testables>
-      </Testables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9E0D1CB06EB30080330D"
             BuildableName = "graphs"
-            BlueprintName = "graphs"
+            BlueprintName = "ud_graphs"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
-      <AdditionalOptions>
-      </AdditionalOptions>
+      <Testables>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -58,12 +55,10 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9E0D1CB06EB30080330D"
             BuildableName = "graphs"
-            BlueprintName = "graphs"
+            BlueprintName = "ud_graphs"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <AdditionalOptions>
-      </AdditionalOptions>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -77,7 +72,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9E0D1CB06EB30080330D"
             BuildableName = "graphs"
-            BlueprintName = "graphs"
+            BlueprintName = "ud_graphs"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
