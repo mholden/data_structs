@@ -33,8 +33,10 @@ void udg_destroy(ud_graph_t *g);
 int udg_add_node(ud_graph_t *g, void *data, udg_node_t **new_node);
 int udg_add_edge(ud_graph_t *g, udg_node_t *n1, udg_node_t *n2);
 
-void udg_iterate_df(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx);
-void udg_iterate_bf(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx);
+int udg_get_node(ud_graph_t *g, void *data, udg_node_t **node);
+
+int udg_iterate_df(ud_graph_t *g, udg_node_t *start, void (*callback)(void *data, void *ctx, bool *stop), void *ctx);
+int udg_iterate_bf(ud_graph_t *g, udg_node_t *start, void (*callback)(void *data, void *ctx, bool *stop), void *ctx);
 
 void udg_check(ud_graph_t *g);
 void udg_dump(ud_graph_t *g);

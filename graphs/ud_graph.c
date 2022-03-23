@@ -161,7 +161,17 @@ error_out:
     return err;
 }
 
-static int udg_check_node_adjacencies_cb(void *data, void *ctx) {
+int udg_get_node(ud_graph_t *g, void *data, udg_node_t **node) {
+    udg_node_t search_node;
+    
+    memset(&search_node, 0, sizeof(udg_node_t));
+    search_node.n_data = data;
+    search_node.n_graph = g;
+    
+    return at_find(g->g_nodes, (void *)&search_node, (void **)node);
+}
+
+static void udg_check_node_adjacencies_cb(void *data, void *ctx, bool *stop) {
     udg_node_t *adj, *n;
     
     adj = (udg_node_t *)data;
@@ -169,60 +179,150 @@ static int udg_check_node_adjacencies_cb(void *data, void *ctx) {
     
     assert(at_find(adj->n_adjs, (void *)n, NULL) == 0);
     
-    return 0;
+    return;
 }
 
-static int udg_check_node_cb(void *data, void *ctx) {
+static void udg_check_node_cb(void *data, void *ctx, bool *stop) {
     udg_node_t *n = (udg_node_t *)data;
     
     // make sure all our adjacencies have us in their adjacency list
     at_iterate(n->n_adjs, udg_check_node_adjacencies_cb, (void *)n);
     
-    return 0;
+    return;
 }
 
 void udg_check(ud_graph_t *g) {
     at_iterate(g->g_nodes, udg_check_node_cb, NULL);
 }
 
-static int udg_dump_node_adjs_cb(void *data, void *ctx) {
+static void udg_dump_node_adjs_cb(void *data, void *ctx, bool *stop) {
     udg_node_t *adj = (udg_node_t *)data;
     ud_graph_t *g = adj->n_graph;
     
     if (g->g_ops->go_dump_data_fn)
         g->g_ops->go_dump_data_fn(adj->n_data);
     
-    return 0;
+    return;
 }
 
-static int udg_dump_node_cb(void *data, void *ctx) {
+static void udg_dump_node_data(udg_node_t *n) {
+    ud_graph_t *g = n->n_graph;
+    if (g->g_ops->go_dump_data_fn)
+        g->g_ops->go_dump_data_fn(n->n_data);
+}
+
+static void udg_dump_node_cb(void *data, void *ctx, bool *stop) {
     udg_node_t *n = (udg_node_t *)data;
     ud_graph_t *g = n->n_graph;
     
     //printf("node %p ", n);
     //printf("n_graph: %p ", g);
     //printf("n_data: ");
-    if (g->g_ops->go_dump_data_fn)
-        g->g_ops->go_dump_data_fn(n->n_data);
+    udg_dump_node_data(n);
     printf(": ");
     at_iterate(n->n_adjs, udg_dump_node_adjs_cb, NULL);
     printf("\n");
     
-    return 0;
+    return;
 }
 
 void udg_dump(ud_graph_t *g) {
     at_iterate(g->g_nodes, udg_dump_node_cb, NULL);
 }
 
+typedef struct _udg_iterate_df_adjs_cb_ctx {
+    avl_tree_t *visited;
+    void (*callback)(void *, void *, bool *);
+    void *ctx;
+    bool *stop;
+} _udg_iterate_df_adjs_cb_ctx_t;
+
+static int _udg_iterate_df(udg_node_t *n, avl_tree_t *visited, void (*callback)(void *, void *, bool *), void *ctx, bool *stop);
+
+static void _udg_iterate_df_adjs_cb(void *data, void *ctx, bool *stop) {
+    udg_node_t *adj = (udg_node_t *)data;
+    _udg_iterate_df_adjs_cb_ctx_t *ia_ctx = (_udg_iterate_df_adjs_cb_ctx_t *)ctx;
+    
+    _udg_iterate_df(adj, ia_ctx->visited, ia_ctx->callback, ia_ctx->ctx, ia_ctx->stop);
+    if (*ia_ctx->stop)
+        *stop = true;
+}
+
+static int _udg_iterate_df(udg_node_t *n, avl_tree_t *visited, void (*callback)(void *, void *, bool *), void *ctx, bool *stop) {
+    bool _stop = false;
+    _udg_iterate_df_adjs_cb_ctx_t ia_ctx;
+    int err;
+    
+    if (at_find(visited, (void *)n, NULL) == 0) // already visited this node
+        goto out;
+    
+    err = at_insert(visited, (void *)n);
+    if (err) {
+        printf("_udg_iterate_df: at_insert failed\n");
+        goto error_out;
+    }
+    
+    memset(&ia_ctx, 0, sizeof(_udg_iterate_df_adjs_cb_ctx_t));
+    ia_ctx.visited = visited;
+    ia_ctx.callback = callback;
+    ia_ctx.ctx = ctx;
+    ia_ctx.stop = &_stop;
+    
+    // iterate all adjancencies
+    at_iterate(n->n_adjs, _udg_iterate_df_adjs_cb, (void *)&ia_ctx);
+    if (_stop) {
+        if (stop)
+            *stop = true;
+        goto out;
+    }
+    
+    callback(n->n_data, ctx, &_stop);
+    if (_stop) {
+        if (stop)
+            *stop = true;
+    }
+    
+out:
+    return 0;
+    
+error_out:
+    return err;
+}
+
 // depth first iteration
-void udg_iterate_df(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx) {
-    assert(0);
+int udg_iterate_df(ud_graph_t *g, udg_node_t *start, void (*callback)(void *, void *, bool *), void *ctx) {
+    avl_tree_t *visited = NULL;
+    avl_tree_ops_t aops;
+    int err;
+    
+    memset(&aops, 0, sizeof(avl_tree_ops_t));
+    aops.ato_compare_fn = udg_compare_nodes;
+    
+    visited = at_create(&aops);
+    if (!visited) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    err = _udg_iterate_df(start, visited, callback, ctx, NULL);
+    if (err)
+        goto error_out;
+    
+    at_destroy(visited);
+    
+    return 0;
+    
+error_out:
+    if (visited)
+        at_destroy(visited);
+    
+    return err;
 }
 
 // breadth first iteration
-void udg_iterate_bf(ud_graph_t *g, void *start, void *callback(void *, void *), void *ctx) {
+int udg_iterate_bf(ud_graph_t *g, udg_node_t *start, void (*callback)(void *, void *, bool *), void *ctx) {
     assert(0);
+    return 0;
 }
 
 int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path) {

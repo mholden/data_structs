@@ -636,33 +636,42 @@ error_out:
 }
 
 // in order traversal
-static int _at_iterate(avl_tree_node_t *atn, int (*callback)(void *, void *), void *ctx) {
-    int done;
+static void _at_iterate(avl_tree_node_t *atn, void (*callback)(void *, void *, bool *), void *ctx, bool *stop) {
+    bool _stop = false;
     
-    if (!atn) return 0;
+    if (!atn) return;
     
     if (atn->atn_lchild) {
-        done = _at_iterate(atn->atn_lchild, callback, ctx);
-        if (done)
+        _at_iterate(atn->atn_lchild, callback, ctx, &_stop);
+        if (_stop) {
+            if (stop)
+                *stop = true;
             goto out;
+        }
     }
     
-    done = callback(atn->atn_data, ctx);
-    if (done)
+    callback(atn->atn_data, ctx, &_stop);
+    if (_stop) {
+        if (stop)
+            *stop = true;
         goto out;
+    }
     
     if (atn->atn_rchild) {
-        done = _at_iterate(atn->atn_rchild, callback, ctx);
-        if (done)
+        _at_iterate(atn->atn_rchild, callback, ctx, &_stop);
+        if (_stop) {
+            if (stop)
+                *stop = true;
             goto out;
+        }
     }
     
 out:
-    return done;
+    return;
 }
 
-void at_iterate(avl_tree_t *at, int (*callback)(void *, void *), void *ctx) {
-    _at_iterate(at->at_root, callback, ctx);
+void at_iterate(avl_tree_t *at, void (*callback)(void *, void *, bool *), void *ctx) {
+    _at_iterate(at->at_root, callback, ctx, NULL);
 }
 
 static void _at_dump(avl_tree_t *at, avl_tree_node_t *atn, int *height) {
