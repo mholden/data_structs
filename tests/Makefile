@@ -1,16 +1,16 @@
 CC=g++
 CFLAGS=-g -std=c++20
-DEVEL=/home/mholden/devel
-INCLUDES=-I$(DEVEL)/data_structs/avl-trees/include -I$(DEVEL)/data_structs/keyval/include
+DS=/home/mholden/devel/data_structs
+INCLUDES=-I$(DS)/include
 
-all: avl-comparisons
+all: avl_comparisons
 
-avl-comparisons: avl-comparisons.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) avl-comparisons.cpp $(DEVEL)/data_structs/avl-trees/avl-tree.c \
-	$(DEVEL)/data_structs/keyval/binary_tree.c $(DEVEL)/data_structs/keyval/hash_table.c \
-	$(DEVEL)/data_structs/keyval/linked_list.c -o avl-comparisons
+avl_comparisons: avl_comparisons.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) avl_comparisons.cpp $(DS)/avl_trees/avl_tree.c \
+	$(DS)/keyval/binary_tree.c $(DS)/keyval/hash_table.c \
+	$(DS)/keyval/linked_list.c -o avl_comparisons
 
 clean:
-	rm *o avl-comparisons
+	rm *o avl_comparisons
 
 .PHONY: all clean

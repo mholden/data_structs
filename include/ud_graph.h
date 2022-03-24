@@ -3,12 +3,8 @@
 
 #include <stdbool.h>
 
-#include "avl-tree.h"
+#include "avl_tree.h"
 #include "linked_list.h"
-
-typedef struct udg_path {
-    linked_list_t *p_path; // linked list of udg_node_t's
-} udg_path_t;
 
 typedef struct ud_graph_ops {
     int (*go_compare_fn)(void *, void *);
@@ -41,7 +37,9 @@ int udg_iterate_bf(ud_graph_t *g, udg_node_t *start, int (*callback)(void *data,
 void udg_check(ud_graph_t *g);
 void udg_dump(ud_graph_t *g);
 
-int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path);
-int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path);
+int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **path);
+int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **path);
+
+
 
 #endif /* _UD_GRAPH_H_ */

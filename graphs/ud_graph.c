@@ -6,6 +6,7 @@
 
 #include "ud_graph.h"
 #include "queue.h"
+#include "linked_list.h"
 
 static int udg_compare_nodes(void *data1, void *data2) {
     udg_node_t *n1, *n2;
@@ -441,12 +442,12 @@ error_out:
     return err;
 }
 
-int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path) {
+int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **path) {
     assert(0);
     return 0;
 }
 
-int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, udg_path_t **path) {
+int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **path) {
     assert(0);
     return 0;
 }

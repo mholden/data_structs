@@ -6,7 +6,7 @@
 #include <getopt.h>
 #include <errno.h>
 
-#include "avl-tree.h"
+#include "avl_tree.h"
 
 #define TADF_NO_FREE_ON_DESTROY 0x00000001
 

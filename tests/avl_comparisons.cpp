@@ -6,7 +6,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "avl-tree.h"
+#include "avl_tree.h"
 #include "binary_tree.h"
 #include "hash_table.h"
 

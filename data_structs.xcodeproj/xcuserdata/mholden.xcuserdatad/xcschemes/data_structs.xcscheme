@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-               BuildableName = "keyval"
-               BlueprintName = "keyval"
+               BuildableName = "linked_lists"
+               BlueprintName = "linked_lists"
                ReferencedContainer = "container:data_structs.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -27,19 +27,17 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
-      <Testables>
-      </Testables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "keyval"
-            BlueprintName = "keyval"
+            BuildableName = "linked_lists"
+            BlueprintName = "linked_lists"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
-      <AdditionalOptions>
-      </AdditionalOptions>
+      <Testables>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -56,13 +54,11 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "keyval"
-            BlueprintName = "keyval"
+            BuildableName = "linked_lists"
+            BlueprintName = "linked_lists"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <AdditionalOptions>
-      </AdditionalOptions>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -75,8 +71,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A1A9DE11CB06C250080330D"
-            BuildableName = "keyval"
-            BlueprintName = "keyval"
+            BuildableName = "linked_lists"
+            BlueprintName = "linked_lists"
             ReferencedContainer = "container:data_structs.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

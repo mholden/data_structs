@@ -1,5 +1,5 @@
-#include "include/hash_table.h"
-#include "include/linked_list.h"
+#include "hash_table.h"
+#include "linked_list.h"
 #include <stdio.h>
 #include <stdlib.h>
 

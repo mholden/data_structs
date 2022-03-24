@@ -3,7 +3,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "include/heap.h"
+#include "heap.h"
 
 typedef struct heap_element {
     int he_key;

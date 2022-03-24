@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "avl-tree.h"
+#include "avl_tree.h"
 
 avl_tree_t *at_create(avl_tree_ops_t *ato) {
     avl_tree_t *at;
