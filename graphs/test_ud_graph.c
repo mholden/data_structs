@@ -97,7 +97,7 @@ typedef struct test_udg_add_edge_fallback_cb_ctx {
     test_udg_data_t next_expected;
 } test_udg_add_edge_fallback_cb_ctx_t;
 
-static void test_udg_add_edge_fallback_cb(void *data, void *ctx, bool *stop) {
+static int test_udg_add_edge_fallback_cb(void *data, void *ctx, bool *stop) {
     udg_node_t *n = (udg_node_t *)data;
     test_udg_add_edge_fallback_cb_ctx_t *aef_ctx = (test_udg_add_edge_fallback_cb_ctx_t *)ctx;
     test_udg_data_t *expected, *actual;
@@ -111,6 +111,8 @@ static void test_udg_add_edge_fallback_cb(void *data, void *ctx, bool *stop) {
     } else {
         expected->tud_key++;
     }
+    
+    return 0;
 }
 
 static void build_random_graph(ud_graph_t *g, test_udg_data_t *tud, int n) {
@@ -145,7 +147,7 @@ static void test_random_case(int n) {
     ud_graph_t *g;
     test_udg_data_t *tud;
     
-    printf("test_random_case\n");
+    printf("test_random_case (n %d)\n", n);
     
     assert(g = udg_create(&test_udg_ops));
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
@@ -159,18 +161,19 @@ static void test_random_case(int n) {
     free(tud);
 }
 
-static void test_iterate_cb(void *data, void *ctx, bool *stop) {
+static int test_iterate_cb(void *data, void *ctx, bool *stop) {
     test_udg_data_t *tud = (test_udg_data_t *)data;
     //printf("test_iterate_cb %d\n", tud->tud_key);
+    return 0;
 }
 
-static void test_iterate_df(void) {
+static void test_iterate(void) {
     ud_graph_t *g;
     test_udg_data_t *tud;
     udg_node_t *start_node;
     int n = 8;
     
-    printf("test_iterate_df\n");
+    printf("test_iterate\n");
     
     assert(g = udg_create(&test_udg_ops));
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
@@ -182,42 +185,18 @@ static void test_iterate_df(void) {
     assert(udg_get_node(g, (void *)&tud[rand() % n], &start_node) == 0);
     //printf("doing udg_iterate_df with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
     assert(udg_iterate_df(g, start_node, test_iterate_cb, NULL) == 0);
-    
-    udg_destroy(g);
-    free(tud);
-}
-
-static void test_iterate_bf(void) {
-    ud_graph_t *g;
-    test_udg_data_t *tud;
-    udg_node_t *start_node;
-    int n = 8;
-    
-    printf("test_iterate_bf\n");
-    
-    assert(g = udg_create(&test_udg_ops));
-    assert(tud = malloc(sizeof(test_udg_data_t) * n));
-    
-    build_random_graph(g, tud, n);
-    udg_check(g);
-    //udg_dump(g);
-    
-    assert(udg_get_node(g, (void *)&tud[rand() % n], &start_node) == 0);
-    //printf("doing udg_iterate_df with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
+    //printf("doing udg_iterate_bf with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
     assert(udg_iterate_bf(g, start_node, test_iterate_cb, NULL) == 0);
     
     udg_destroy(g);
     free(tud);
 }
 
-static void test_iterate(void) {
-    test_iterate_df();
-    //test_iterate_bf();
-}
+#define DEFAULT_NUM_ELEMENTS (1 << 10)
 
 int main(int argc, char **argv) {
     time_t seed = 0;
-    int ch, num_elements = 0;
+    int ch, num_elements = DEFAULT_NUM_ELEMENTS;
     
     struct option longopts[] = {
         { "num",    required_argument,   NULL,   'n' },
@@ -247,8 +226,7 @@ int main(int argc, char **argv) {
     printf("seed %llu\n", seed);
     
     test_specific_cases();
-    if (num_elements)
-        test_random_case(num_elements);
+    test_random_case(num_elements);
     test_iterate();
     
 	return 0;

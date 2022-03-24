@@ -729,7 +729,7 @@ static void test_random_data_set(int num_elements) {
     test_at_data_t *tad = NULL, *_tad, *__tad;
     int err, remaining;
     
-    printf("test_random_data_set\n");
+    printf("test_random_data_set (num_elements %d)\n", num_elements);
     
     assert(at = at_create(&test_at_ops));
     
@@ -795,9 +795,11 @@ static void test_random_data_set(int num_elements) {
     free(tad);
 }
 
+#define DEFAULT_NUM_ELEMENTS (1 << 10)
+
 int main(int argc, char **argv) {
     time_t seed = 0;
-    int ch, num_elements = 0;
+    int ch, num_elements = DEFAULT_NUM_ELEMENTS;
     
     struct option longopts[] = {
         { "num",    required_argument,   NULL,   'n' },
@@ -828,9 +830,7 @@ int main(int argc, char **argv) {
     
     test_specific_insertion_cases();
     test_specific_removal_cases();
-    
-    if (num_elements)
-        test_random_data_set(num_elements);
+    test_random_data_set(num_elements);
     
 	return 0;
 }

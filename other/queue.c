@@ -65,3 +65,19 @@ void q_destroy(struct queue *q){
 
 	return;
 }
+
+void q_dump(queue_t *q, void (*callback)(void *data)) {
+    int i;
+    printf("head_ind: %d\n", q->head_ind);
+    printf("tail_ind: %d\n", q->tail_ind);
+    printf("curr_size: %d\n", q->curr_size);
+    printf("max_size: %d\n", q->max_size);
+    printf("data:\n");
+    i = q->head_ind;
+    for (int j = 0; j < q->curr_size; j++) {
+        printf("[%d]:", i);
+        callback(q->data[i]);
+        printf("\n");
+        i = (i + 1) % q->max_size;
+    }
+}
