@@ -1,133 +1,176 @@
-#include "linked_list.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+#include <errno.h>
 
-/* Insert (/update) key-value pair into list */
-int ll_insert(struct linked_list *ll, void *key, void *value, int flags){
-	struct ll_node *node, *prev;
+#include "linked_list.h"
 
-	node = ll->root;
-	if (node == NULL) { /* Inserting at root */
-		ll->root = (struct ll_node *)malloc(sizeof(struct ll_node));
-        if(ll->root == NULL){
-            printf("ll_insert(): Out of memory?\n");
-            return -1;
-        }
-        
-        node = ll->root;
-        
-        goto init_node;
-	}
-	
-	do {
-		if(!ll->key_compare(node->key, key)) /* Key already exists - update it */
-			goto update_node;
-		
-		prev = node;
-		node = node->next;
-	} while (node);
-
-	node = prev;
-	node->next = (struct ll_node *)malloc(sizeof(struct ll_node));
-	if (node->next == NULL) {
-		printf("ll_insert(): Out of memory?\n");
-		return -1;
-	}
-
-	node = node->next;
-
-init_node:
-	node->key = malloc(ll->keysz);
-    if (flags & LL_NO_ALLOC)
-        node->value = value;
-    else
-        node->value = malloc(ll->valsz);
-    if (node->key == NULL || node->value == NULL) {
-        printf("ll_insert(): Out of memory?\n");
-        return -1;
-    }
-	node->next = NULL;
+linked_list_t *ll_create(ll_ops_t *lops) {
+    linked_list_t *ll;
     
-    memcpy(node->key, key, ll->keysz);
-	
-update_node:
-	memcpy(node->value, value, ll->valsz);
-
-	return 0;
+    ll = malloc(sizeof(linked_list_t));
+    if (!ll) {
+        printf("ll_create: failed to allocate memory for ll\n");
+        goto error_out;
+    }
+    
+    memset(ll, 0, sizeof(linked_list_t));
+    
+    ll->ll_ops = malloc(sizeof(ll_ops_t));
+    if (!ll->ll_ops) {
+        printf("ll_create: failed to allocate memory for ll_ops\n");
+        goto error_out;
+    }
+    memcpy(ll->ll_ops, lops, sizeof(ll_ops_t));
+    
+    return ll;
+    
+error_out:
+    return NULL;
 }
 
-/* Given key, find value in list */
-int ll_find(struct linked_list *ll, void *key, void *value){
-	struct ll_node *node;
-
-	node = ll->root;
-	while (node != NULL) {
-		if (!ll->key_compare(node->key, key)) {
-            if (value)
-                memcpy(value, node->value, ll->valsz);
-			return 0;
-		}
-		else node = node->next;
-	}
-
-	return -1;
+static void ll_destroy_node(linked_list_t *ll, ll_node_t *n) {
+    if (ll->ll_ops->llo_destroy_data_fn)
+        ll->ll_ops->llo_destroy_data_fn(n->ln_data);
+    free(n);
 }
 
-/* Remove key-value pair from list */
-int ll_remove(struct linked_list *ll, void *key, int flags){
-    struct ll_node *node, *prev;
+void ll_destroy(linked_list_t *ll) {
+    ll_node_t *curr, *prev;
+    
+    curr = ll->ll_root;
+    while (curr) {
+        prev = curr;
+        curr = curr->ln_next;
+        ll_destroy_node(ll, prev);
+    }
+    free(ll->ll_ops);
+    free(ll);
+}
+
+int ll_insert(linked_list_t *ll, void *data) {
+    ll_node_t *new, *curr, *prev;
+    int err;
+    
+    new = malloc(sizeof(ll_node_t));
+    if (!new) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    memset(new, 0, sizeof(ll_node_t));
+    new->ln_data = data;
     
     prev = NULL;
-    node = ll->root;
-    while (node != NULL) {
-        if (!ll->key_compare(node->key, key))
-            break;
-        prev = node;
-        node = node->next;
+    curr = ll->ll_root;
+    while (curr) {
+        prev = curr;
+        curr = curr->ln_next;
     }
     
-    if (node == NULL) // key doesn't exist in list
-        return -1;
+    if (!prev) { // inserting at root
+        assert(ll_empty(ll));
+        ll->ll_root = new;
+    } else {
+        prev->ln_next = new;
+    }
     
-    prev->next = node->next;
-    free(node->key);
-    if (!(flags & LL_NO_FREE))
-        free(node->value);
+    ll->ll_nnodes++;
     
-	return 0;
+    return 0;
+    
+error_out:
+    return err;
 }
 
-struct linked_list *ll_create(size_t keysz, size_t valsz, int (*key_compare)(void *key1, void *key2)) {
-	struct linked_list *new_ll;
-	
-	new_ll = (struct linked_list *)malloc(sizeof(struct linked_list));
-	if(new_ll == NULL){
-		printf("ll_create(): Out of memory?\n");
-		return NULL;
-	}
-
-	new_ll->root = NULL;
-    new_ll->keysz = keysz;
-    new_ll->valsz = valsz;
-	new_ll->key_compare = key_compare;
-
-	return new_ll;
+int ll_find(linked_list_t *ll, void *to_find, void **data) {
+    ll_node_t *n;
+    int err;
+    
+    n = ll->ll_root;
+    while (n) {
+        if (!ll->ll_ops->llo_compare_fn(to_find, n->ln_data))
+            break;
+        n = n->ln_next;
+    }
+    
+    if (!n) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    if (data)
+        *data = n->ln_data;
+    
+    return 0;
+    
+error_out:
+    return err;
 }
 
-void ll_destroy(struct linked_list *ll){
-	struct ll_node *node, *prev;
-	
-	node = ll->root;
-	prev = NULL;
-	while(node != NULL){
-		prev = node;	
-		node = node->next;
-        free(prev->key);
-        free(prev->value);
-		free(prev);
-	}
+int ll_remove(linked_list_t *ll, void *to_remove) {
+    ll_node_t *n, *prev;
+    int err;
+    
+    prev = NULL;
+    n = ll->ll_root;
+    while (n) {
+        if (!ll->ll_ops->llo_compare_fn(to_remove, n->ln_data))
+            break;
+        prev = n;
+        n = n->ln_next;
+    }
+    
+    if (!n) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    if (!prev) // root
+        ll->ll_root = n->ln_next;
+    else
+        prev->ln_next = n->ln_next;
+        
+    ll_destroy_node(ll, n);
+    ll->ll_nnodes--;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
 
-	free(ll);
-	return;
+bool ll_empty(linked_list_t *ll) {
+    return (ll->ll_nnodes == 0);
+}
+
+void ll_dump(linked_list_t *ll) {
+    ll_node_t *n;
+    
+    printf("ll_nnodes: %lu ", ll->ll_nnodes);
+    printf("nodes: ");
+    n = ll->ll_root;
+    while (n) {
+        if (ll->ll_ops->llo_dump_data_fn)
+            ll->ll_ops->llo_dump_data_fn(n->ln_data);
+        n = n->ln_next;
+    }
+    printf("\n");
+    
+    return;
+}
+
+void ll_check(linked_list_t *ll) {
+    ll_node_t *n;
+    int nnodes;
+    
+    n = ll->ll_root;
+    nnodes = 0;
+    while (n) {
+        nnodes++;
+        n = n->ln_next;
+    }
+    assert(ll->ll_nnodes == nnodes);
+    
+    return;
 }
