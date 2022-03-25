@@ -33,6 +33,8 @@ int at_insert(avl_tree_t *at, void *data);
 int at_find(avl_tree_t *at, void *to_find, void **data);
 int at_remove(avl_tree_t *at, void *data);
 
+bool at_empty(avl_tree_t *at);
+
 int at_iterate(avl_tree_t *at, int (*callback)(void *data, void *ctx, bool *stop), void *ctx);
 
 void at_check(avl_tree_t *at);

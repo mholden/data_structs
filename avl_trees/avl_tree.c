@@ -635,6 +635,10 @@ error_out:
     return err;
 }
 
+bool at_empty(avl_tree_t *at) {
+    return (at->at_nnodes == 0);
+}
+
 // in order traversal
 static int _at_iterate(avl_tree_node_t *atn, int (*callback)(void *, void *, bool *), void *ctx, bool *stop) {
     bool _stop = false;

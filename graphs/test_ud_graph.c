@@ -37,6 +37,35 @@ static ud_graph_ops_t test_udg_ops = {
     .go_destroy_data_fn = NULL
 };
 
+static int test_specific_case1_spath_cb(void *data, void *ctx, bool *stop) {
+    udg_node_t *n = (udg_node_t *)data;
+    test_udg_data_t *tud = (test_udg_data_t *)n->n_data;
+    int *path_iter = (int *)ctx;
+    int err;
+    
+    switch (*path_iter) {
+        case 0:
+            assert(tud->tud_key == 1);
+            break;
+        case 1:
+            assert(tud->tud_key == 4);
+            break;
+        case 2:
+            assert(tud->tud_key == 6);
+            break;
+        default:
+            assert(0);
+            break;
+    }
+    
+    (*path_iter)++;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 //
 // graph definition:
 //   1: 3, 4
@@ -52,6 +81,8 @@ static void test_specific_case1(void) {
     ud_graph_t *g;
     test_udg_data_t tud[6];
     udg_node_t *n[6];
+    linked_list_t *spath;
+    int path_iter;
     
     printf("test_specific_case1\n");
     
@@ -81,9 +112,16 @@ static void test_specific_case1(void) {
     assert(udg_add_edge(g, n[3], n[4]) == 0); // 5-6
     assert(udg_add_edge(g, n[4], n[5]) == 0); // 6-8
     udg_check(g);
-    
     //udg_dump(g);
     
+    assert(udg_shortest_path_df(g, n[0], n[4], &spath) == 0);
+    assert(spath);
+    
+    path_iter = 0;
+    assert(ll_iterate(spath, test_specific_case1_spath_cb, (void *)&path_iter) == 0);
+    
+    //udg_dump(g);
+    ll_destroy(spath);
     udg_destroy(g);
 }
 
@@ -134,7 +172,7 @@ static void build_random_graph(ud_graph_t *g, test_udg_data_t *tud, int n) {
                 aef_ctx.nodes = nodes;
                 aef_ctx.node = nodes[i];
                 aef_ctx.next_expected.tud_key = 0;
-                at_iterate(nodes[i]->n_adjs, test_udg_add_edge_fallback_cb, (void *)&aef_ctx);
+                assert(at_iterate(nodes[i]->n_adjs, test_udg_add_edge_fallback_cb, (void *)&aef_ctx) == 0);
             }
         }
         //udg_check(g);
@@ -163,7 +201,7 @@ static void test_random_case(int n) {
 
 static int test_iterate_cb(void *data, void *ctx, bool *stop) {
     test_udg_data_t *tud = (test_udg_data_t *)data;
-    //printf("test_iterate_cb %d\n", tud->tud_key);
+    printf("    test_iterate_cb %d\n", tud->tud_key);
     return 0;
 }
 
@@ -183,10 +221,46 @@ static void test_iterate(void) {
     //udg_dump(g);
     
     assert(udg_get_node(g, (void *)&tud[rand() % n], &start_node) == 0);
-    //printf("doing udg_iterate_df with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
+    printf("  doing udg_iterate_df with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
     assert(udg_iterate_df(g, start_node, test_iterate_cb, NULL) == 0);
-    //printf("doing udg_iterate_bf with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
+    printf("  doing udg_iterate_bf with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
     assert(udg_iterate_bf(g, start_node, test_iterate_cb, NULL) == 0);
+    
+    udg_destroy(g);
+    free(tud);
+}
+
+static void test_shortest_path(void) {
+    ud_graph_t *g;
+    test_udg_data_t *tud, *_tud1, *_tud2;
+    udg_node_t *from, *to;
+    linked_list_t *spath;
+    int n = 128;
+    
+    printf("test_shortest_path\n");
+    
+    assert(g = udg_create(&test_udg_ops));
+    assert(tud = malloc(sizeof(test_udg_data_t) * n));
+    
+    build_random_graph(g, tud, n);
+    udg_check(g);
+    //udg_dump(g);
+    
+    _tud1 = &tud[rand() % n];
+    _tud2 = &tud[rand() % n];
+    assert(udg_get_node(g, (void *)_tud1, &from) == 0);
+    assert(udg_get_node(g, (void *)_tud2, &to) == 0);
+    
+    printf("  getting shortest path from %d to %d...\n", _tud1->tud_key, _tud2->tud_key);
+    assert(udg_shortest_path_df(g, from, to, &spath) == 0);
+    
+    if (spath) {
+        printf("    spath is: ");
+        ll_dump(spath);
+        ll_destroy(spath);
+    } else {
+        printf("    no path\n");
+    }
     
     udg_destroy(g);
     free(tud);
@@ -228,6 +302,7 @@ int main(int argc, char **argv) {
     test_specific_cases();
     test_random_case(num_elements);
     test_iterate();
+    test_shortest_path();
     
 	return 0;
 }

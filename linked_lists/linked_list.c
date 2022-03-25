@@ -30,6 +30,52 @@ error_out:
     return NULL;
 }
 
+static int ll_create_copy_cb(void *data, void *ctx, bool *stop) {
+    linked_list_t *new_ll = (linked_list_t *)ctx;
+    int err;
+    
+    err = ll_insert(new_ll, data);
+    if (err)
+        goto error_out;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
+linked_list_t *ll_create_copy(linked_list_t *ll) {
+    linked_list_t *new_ll;
+    int err;
+    
+    new_ll = (linked_list_t *)malloc(sizeof(linked_list_t));
+    if (!new_ll) {
+        printf("ll_create: failed to allocate memory for new_ll\n");
+        goto error_out;
+    }
+    
+    memset(new_ll, 0, sizeof(linked_list_t));
+    
+    new_ll->ll_ops = (linked_list_ops_t *)malloc(sizeof(linked_list_ops_t));
+    if (!new_ll->ll_ops) {
+        printf("ll_create: failed to allocate memory for ll_ops\n");
+        goto error_out;
+    }
+    memcpy(new_ll->ll_ops, ll->ll_ops, sizeof(linked_list_ops_t));
+    
+    err = ll_iterate(ll, ll_create_copy_cb, (void *)new_ll);
+    if (err)
+        goto error_out;
+    
+    return new_ll;
+    
+error_out:
+    if (new_ll)
+        ll_destroy(new_ll);
+    
+    return NULL;
+}
+
 static void ll_destroy_node(linked_list_t *ll, ll_node_t *n) {
     if (ll->ll_ops->llo_destroy_data_fn)
         ll->ll_ops->llo_destroy_data_fn(n->ln_data);
@@ -45,7 +91,8 @@ void ll_destroy(linked_list_t *ll) {
         curr = curr->ln_next;
         ll_destroy_node(ll, prev);
     }
-    free(ll->ll_ops);
+    if (ll->ll_ops)
+        free(ll->ll_ops);
     free(ll);
 }
 
@@ -138,6 +185,10 @@ int ll_remove(linked_list_t *ll, void *to_remove) {
     
 error_out:
     return err;
+}
+
+size_t ll_length(linked_list_t *ll) {
+    return ll->ll_nnodes;
 }
 
 bool ll_empty(linked_list_t *ll) {

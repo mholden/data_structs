@@ -23,6 +23,7 @@ typedef struct linked_list {
 } linked_list_t;
 
 linked_list_t *ll_create(linked_list_ops_t *lops);
+linked_list_t *ll_create_copy(linked_list_t *ll);
 void ll_destroy(linked_list_t *ll);
 
 int ll_insert(linked_list_t *ll, void *data);
@@ -30,6 +31,7 @@ int ll_find(linked_list_t *ll, void *to_find, void **data);
 int ll_remove(linked_list_t *ll, void *to_remove);
 
 bool ll_empty(linked_list_t *ll);
+size_t ll_length(linked_list_t *ll);
 
 int ll_iterate(linked_list_t *ll, int (*callback)(void *data, void *ctx, bool *stop), void *ctx);
 
