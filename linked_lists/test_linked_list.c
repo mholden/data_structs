@@ -26,7 +26,7 @@ static void test_ll_dump_data(void *data) {
     printf("%d ", tll->tll_key);
 }
 
-static ll_ops_t test_ll_ops = {
+static linked_list_ops_t test_ll_ops = {
     .llo_compare_fn = test_ll_compare,
     .llo_dump_data_fn = test_ll_dump_data,
     .llo_destroy_data_fn = NULL
@@ -150,6 +150,36 @@ void test_specific_cases(void) {
     test_specific_case3();
 }
 
+static int test_iterate_cb(void *data, void *ctx, bool *stop) {
+    test_ll_data_t *tll = (test_ll_data_t *)data;
+    printf("  test_iterate_cb: %d\n", tll->tll_key);
+    return 0;
+}
+
+void test_iterate(void) {
+    linked_list_t *ll;
+    test_ll_data_t *tll;
+    int n = 8;
+    
+    printf("test_iterate\n");
+    
+    assert(ll = ll_create(&test_ll_ops));
+    assert(tll = malloc(sizeof(test_ll_data_t) * n));
+    
+    memset(tll, 0, sizeof(test_ll_data_t) * n);
+    
+    for (int i = 0; i < n; i++) {
+        tll[i].tll_key = i + 1;
+        assert(ll_insert(ll, (void *)&tll[i]) == 0);
+        //ll_check();
+    }
+    ll_check(ll);
+    
+    assert(ll_iterate(ll, test_iterate_cb, NULL) == 0);
+    
+    ll_destroy(ll);
+}
+
 void test_random_case(int n) {
     linked_list_t *ll;
     test_ll_data_t *tll, *_tll;
@@ -238,6 +268,7 @@ int main(int argc, char **argv) {
     printf("seed %u\n", seed);
     
     test_specific_cases();
+    test_iterate();
     test_random_case(num_elements);
     
     return 0;

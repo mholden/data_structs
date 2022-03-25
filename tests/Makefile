@@ -7,8 +7,8 @@ all: avl_comparisons
 
 avl_comparisons: avl_comparisons.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) avl_comparisons.cpp $(DS)/avl_trees/avl_tree.c \
-	$(DS)/keyval/binary_tree.c $(DS)/keyval/hash_table.c \
-	$(DS)/keyval/linked_list.c -o avl_comparisons
+	$(DS)/binary_trees/binary_tree.c $(DS)/hash_tables/hash_table.c \
+	$(DS)/linked_lists/linked_list.c -o avl_comparisons
 
 clean:
 	rm *o avl_comparisons

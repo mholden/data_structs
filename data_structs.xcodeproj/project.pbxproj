@@ -24,6 +24,7 @@
 		2A893D4827ECB15400F6B29F /* binary_tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BF91CF2A4F700FA4EBC /* binary_tree.c */; };
 		2A893D5227ECB16E00F6B29F /* hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFB1CF2A4F700FA4EBC /* hash_table.c */; };
 		2A893D5427ECB5A300F6B29F /* test_linked_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A893D5327ECB5A300F6B29F /* test_linked_list.c */; };
+		2A893D5727ECE05400F6B29F /* test_hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A893D5627ECE05400F6B29F /* test_hash_table.c */; };
 		2AB396C127E507FF00FF27A5 /* binary_tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BF91CF2A4F700FA4EBC /* binary_tree.c */; };
 		2AB396C327E89C2E00FF27A5 /* avl_comparisons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2AB396B527E5076A00FF27A5 /* avl_comparisons.cpp */; };
 		2AB396C427E8B95000FF27A5 /* hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFB1CF2A4F700FA4EBC /* hash_table.c */; };
@@ -157,6 +158,8 @@
 		2A893D5127ECB15C00F6B29F /* hash_tables */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hash_tables; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A893D5327ECB5A300F6B29F /* test_linked_list.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_linked_list.c; sourceTree = "<group>"; };
 		2A893D5527ECB5C500F6B29F /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		2A893D5627ECE05400F6B29F /* test_hash_table.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_hash_table.c; sourceTree = "<group>"; };
+		2A893D5827ECE1D100F6B29F /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		2AA8184D27DFAB310059F7FC /* heap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = heap.h; path = include/heap.h; sourceTree = SOURCE_ROOT; };
 		2AA8185827DFAB530059F7FC /* heap */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = heap; sourceTree = BUILT_PRODUCTS_DIR; };
 		2AA8188027E0E87C0059F7FC /* avl_trees */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = avl_trees; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -284,8 +287,8 @@
 			isa = PBXGroup;
 			children = (
 				2A893D2F27ECA84700F6B29F /* Makefile */,
-				2A1A9E021CB06E4A0080330D /* test_ud_graph.c */,
 				2A1A9E031CB06E4A0080330D /* ud_graph.c */,
+				2A1A9E021CB06E4A0080330D /* test_ud_graph.c */,
 			);
 			name = graphs;
 			sourceTree = "<group>";
@@ -342,7 +345,9 @@
 		2A893D3427ECAF4000F6B29F /* hash_tables */ = {
 			isa = PBXGroup;
 			children = (
+				2A893D5827ECE1D100F6B29F /* Makefile */,
 				2A590BFB1CF2A4F700FA4EBC /* hash_table.c */,
+				2A893D5627ECE05400F6B29F /* test_hash_table.c */,
 			);
 			path = hash_tables;
 			sourceTree = SOURCE_ROOT;
@@ -669,6 +674,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A893D5727ECE05400F6B29F /* test_hash_table.c in Sources */,
 				2A893D5227ECB16E00F6B29F /* hash_table.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

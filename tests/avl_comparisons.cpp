@@ -16,18 +16,31 @@ static int test_compare(void *key1, void *key2) {
     k1 = (int *)key1;
     k2 = (int *)key2;
     
-    if (*k1 > *k2)
-        return 1;
+    if (*k1 == *k2)
+        return 0;
     else if (*k1 < *k2)
         return -1;
-    else
-        return 0;
+    else // *k1 > *k2
+        return 1;
 }
 
 static avl_tree_ops_t at_ops = {
     .ato_compare_fn = test_compare,
     .ato_destroy_data_fn = NULL,
     .ato_dump_data_fn = NULL
+};
+
+static unsigned int test_hash_fn(void *key) {
+    return ht_default_hash(key, sizeof(int));
+}
+
+static hash_table_ops_t ht_ops = {
+    .hto_hash_fn = test_hash_fn,
+    .hto_lops = {
+        .llo_compare_fn = test_compare,
+        .llo_destroy_data_fn = NULL,
+        .llo_dump_data_fn = NULL
+    }
 };
 
 static double diff_timespec(struct timespec tend, struct timespec tstart) {
@@ -78,7 +91,7 @@ int main(int argc, char **argv) {
     
     assert(bt = bt_create(sizeof(int), sizeof(int), test_compare));
     assert(at = at_create(&at_ops));
-    assert(ht = ht_create(sizeof(int), sizeof(int), test_compare, num_elements * 2));
+    assert(ht = ht_create(&ht_ops));
     
     // test inserts
     
@@ -97,7 +110,7 @@ int main(int argc, char **argv) {
         
         // hash table
         clock_gettime(CLOCK_MONOTONIC, &tstart);
-        assert(ht_insert(ht, (void *)std::addressof(*it), (void *)std::addressof(*it)) == 0);
+        assert(ht_insert(ht, (void *)std::addressof(*it)) == 0);
         clock_gettime(CLOCK_MONOTONIC, &tend);
         hit += diff_timespec(tend, tstart);
         

@@ -6,7 +6,7 @@
 #include "avl_tree.h"
 #include "linked_list.h"
 
-typedef struct ud_graph_ops {
+typedef struct ud_graph_ops { // TODO: implement these like you implemented hash table linked list ops
     int (*go_compare_fn)(void *, void *);
     void (*go_destroy_data_fn)(void *);
     void (*go_dump_data_fn)(void *);
