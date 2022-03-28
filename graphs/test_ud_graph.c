@@ -130,33 +130,8 @@ static void test_specific_cases(void) {
     test_specific_case1();
 }
 
-typedef struct test_udg_add_edge_fallback_cb_ctx {
-    udg_node_t **nodes;
-    udg_node_t *node;
-    test_udg_data_t next_expected;
-} test_udg_add_edge_fallback_cb_ctx_t;
-
-static int test_udg_add_edge_fallback_cb(void *data, void *ctx, bool *stop) {
-    udg_node_t *n = (udg_node_t *)data;
-    test_udg_add_edge_fallback_cb_ctx_t *aef_ctx = (test_udg_add_edge_fallback_cb_ctx_t *)ctx;
-    test_udg_data_t *expected, *actual;
-    
-    expected = &aef_ctx->next_expected;
-    actual = (test_udg_data_t *)n->n_data;
-    
-    if (expected->tud_key < actual->tud_key) {
-        assert(udg_add_edge(aef_ctx->node->n_graph, aef_ctx->node, aef_ctx->nodes[expected->tud_key]) == 0);
-        *stop = true; // stop the iteration
-    } else {
-        expected->tud_key++;
-    }
-    
-    return 0;
-}
-
 static void build_random_graph(ud_graph_t *g, test_udg_data_t *tud, int n) {
     udg_node_t **nodes;
-    test_udg_add_edge_fallback_cb_ctx_t aef_ctx;
     int nedges, err;
     
     assert(nodes = malloc(sizeof(udg_node_t *) * n));
@@ -164,21 +139,17 @@ static void build_random_graph(ud_graph_t *g, test_udg_data_t *tud, int n) {
     for (int i = 0; i < n; i++) {
         tud[i].tud_key = i;
         assert(udg_add_node(g, (void *)&tud[i], &nodes[i]) == 0);
-        nedges = rand() % (i + 1);
-        for (int j = 0; j < nedges; j++) {
-            err = udg_add_edge(g, nodes[i], nodes[rand() % i]);
-            assert(err == 0 || err == EEXIST);
-            if (err == EEXIST) { // if random edge doesn't work, force-add one manually
-                memset(&aef_ctx, 0, sizeof(test_udg_add_edge_fallback_cb_ctx_t));
-                aef_ctx.nodes = nodes;
-                aef_ctx.node = nodes[i];
-                aef_ctx.next_expected.tud_key = 0;
-                assert(at_iterate(nodes[i]->n_adjs, test_udg_add_edge_fallback_cb, (void *)&aef_ctx) == 0);
-            }
-        }
-        //udg_check(g);
     }
     
+    // add edges randomly
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (rand() % 2)
+                assert(udg_add_edge(g, nodes[i], nodes[j]) == 0);
+        }
+    }
+    
+    udg_check(g);
     free(nodes);
 }
 
@@ -192,8 +163,6 @@ static void test_random_case(int n) {
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
     
     build_random_graph(g, tud, n);
-    
-    udg_check(g);
     //udg_dump(g);
     
     udg_destroy(g);
@@ -218,8 +187,6 @@ static void test_iterate(void) {
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
     
     build_random_graph(g, tud, n);
-    udg_check(g);
-    //udg_dump(g);
     
     assert(udg_get_node(g, (void *)&tud[rand() % n], &start_node) == 0);
     //printf("  doing udg_iterate_df with start %d\n", ((test_udg_data_t *)start_node->n_data)->tud_key);
@@ -589,7 +556,6 @@ static void test_shortest_path_random(int n) {
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
     
     build_random_graph(g, tud, n);
-    udg_check(g);
     //udg_dump(g);
     
     _tud1 = &tud[rand() % n];
