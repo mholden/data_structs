@@ -450,7 +450,6 @@ typedef struct udg_shortest_path_df_adjs_cb_ctx {
 } udg_shortest_path_df_adjs_cb_ctx_t;
 
 static int udg_shortest_path_df_adjs_cb(void *data, void *ctx, bool *stop);
-static int udg_shortest_path_df_add_adjs_spath_cb(void *data, void *ctx, bool *stop);
 
 static linked_list_ops_t udg_spath_ll_ops = {
     .llo_compare_fn = udg_compare_nodes,
@@ -460,7 +459,7 @@ static linked_list_ops_t udg_spath_ll_ops = {
 
 static int _udg_shortest_path_df(udg_node_t *from, udg_node_t *to, linked_list_t *curr_path, size_t length_to_beat, linked_list_t **spath) {
     udg_shortest_path_df_adjs_cb_ctx_t spac;
-    linked_list_t *_curr_path, *adjs_spath, *_spath = NULL;
+    linked_list_t *_curr_path, *adjs_spath = NULL;
     int err;
     
     _curr_path = ll_create_copy(curr_path);
@@ -483,29 +482,25 @@ static int _udg_shortest_path_df(udg_node_t *from, udg_node_t *to, linked_list_t
         goto error_out;
     
     ll_destroy(_curr_path);
+    _curr_path = NULL;
     
     adjs_spath = spac.spath;
-    
     if (adjs_spath) {
-        _spath = ll_create(&udg_spath_ll_ops);
-        if (!_spath) {
-            err = ENOMEM;
-            goto error_out;
-        }
-        err = ll_insert(_spath, from);
+        err = ll_insert_head(adjs_spath, from);
         if (err)
             goto error_out;
-        err = ll_iterate(adjs_spath, udg_shortest_path_df_add_adjs_spath_cb, (void *)_spath);
-        if (err)
-            goto error_out;
-        ll_destroy(adjs_spath);
     }
     
-    *spath = _spath;
+    *spath = adjs_spath;
     
     return 0;
     
 error_out:
+    if (_curr_path)
+        ll_destroy(_curr_path);
+    if (adjs_spath)
+        ll_destroy(adjs_spath);
+    
     return err;
 }
 
@@ -557,7 +552,7 @@ static int udg_shortest_path_df_adjs_cb(void *data, void *ctx, bool *stop) {
     }
     
     if (spath) {
-        assert(ll_find(spath, (void *)spac->to, NULL) == 0);
+        //assert(ll_find(spath, (void *)spac->to, NULL) == 0);
         //
         // we found a path to the destination node. now check
         // if it's shorter than the best we've found so far
@@ -582,26 +577,14 @@ out:
     return 0;
     
 error_out:
-    return err;
-}
-
-static int udg_shortest_path_df_add_adjs_spath_cb(void *data, void *ctx, bool *stop) {
-    udg_node_t *n = (udg_node_t *)data;
-    linked_list_t *path = (linked_list_t *)ctx;
-    int err;
+    if (spath)
+        ll_destroy(spath);
     
-    err = ll_insert(path, (void *)n);
-    if (err)
-        goto error_out;
-    
-    return 0;
-    
-error_out:
     return err;
 }
 
 int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **spath) {
-    linked_list_t *curr_path = NULL, *adjs_spath, *_spath = NULL;
+    linked_list_t *curr_path = NULL, *adjs_spath = NULL;
     udg_shortest_path_df_adjs_cb_ctx_t spac;
     int err;
     
@@ -632,25 +615,16 @@ int udg_shortest_path_df(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked
         goto error_out;
     
     ll_destroy(curr_path);
+    curr_path = NULL;
     
     adjs_spath = spac.spath;
-    
     if (adjs_spath) {
-        _spath = ll_create(&udg_spath_ll_ops);
-        if (!_spath) {
-            err = ENOMEM;
-            goto error_out;
-        }
-        err = ll_insert(_spath, from);
+        err = ll_insert_head(adjs_spath, (void *)from);
         if (err)
             goto error_out;
-        err = ll_iterate(adjs_spath, udg_shortest_path_df_add_adjs_spath_cb, (void *)_spath);
-        if (err)
-            goto error_out;
-        ll_destroy(adjs_spath);
     }
     
-    *spath = _spath;
+    *spath = adjs_spath;
     
 out:
     return 0;
@@ -658,8 +632,8 @@ out:
 error_out:
     if (curr_path)
         ll_destroy(curr_path);
-    if (_spath)
-        ll_destroy(_spath);
+    if (adjs_spath)
+        ll_destroy(adjs_spath);
     
     return err;
 }

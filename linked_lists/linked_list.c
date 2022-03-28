@@ -130,6 +130,29 @@ error_out:
     return err;
 }
 
+int ll_insert_head(linked_list_t *ll, void *data) {
+    ll_node_t *new_node;
+    int err;
+    
+    new_node = (ll_node_t *)malloc(sizeof(ll_node_t));
+    if (!new_node) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    memset(new_node, 0, sizeof(ll_node_t));
+    new_node->ln_data = data;
+    
+    new_node->ln_next = ll->ll_root;
+    ll->ll_root = new_node;
+    
+    ll->ll_nnodes++;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 int ll_find(linked_list_t *ll, void *to_find, void **data) {
     ll_node_t *n;
     int err;

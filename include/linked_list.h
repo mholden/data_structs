@@ -27,6 +27,7 @@ linked_list_t *ll_create_copy(linked_list_t *ll);
 void ll_destroy(linked_list_t *ll);
 
 int ll_insert(linked_list_t *ll, void *data);
+int ll_insert_head(linked_list_t *ll, void *data);
 int ll_find(linked_list_t *ll, void *to_find, void **data);
 int ll_remove(linked_list_t *ll, void *to_remove);
 

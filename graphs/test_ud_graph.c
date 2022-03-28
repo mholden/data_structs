@@ -571,14 +571,13 @@ static void test_shortest_path_specific_case1(void) {
     udg_destroy(g);
 }
 
-static void test_shortest_path_random(void) {
+static void test_shortest_path_random(int n) {
     ud_graph_t *g;
     test_udg_data_t *tud, *_tud1, *_tud2;
     udg_node_t *from, *to;
     linked_list_t *spath;
-    int n = 128;
     
-    printf("test_shortest_path_random\n");
+    printf("test_shortest_path_random (n %d)\n", n);
     
     assert(g = udg_create(&test_udg_ops));
     assert(tud = malloc(sizeof(test_udg_data_t) * n));
@@ -607,8 +606,8 @@ static void test_shortest_path_random(void) {
     free(tud);
 }
 
-static void test_shortest_path(void) {
-    test_shortest_path_random();
+static void test_shortest_path(int n) {
+    test_shortest_path_random(n);
     test_shortest_path_specific_case1();
     test_shortest_path_specific_case2();
     test_shortest_path_specific_case3();
@@ -651,7 +650,7 @@ int main(int argc, char **argv) {
     test_specific_cases();
     test_random_case(num_elements);
     test_iterate();
-    test_shortest_path();
+    test_shortest_path(num_elements);
     
 	return 0;
 }

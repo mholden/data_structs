@@ -143,11 +143,128 @@ void test_specific_case1(void) {
     ll_destroy(ll);
 }
 
+// same as a above but with ll_insert_head()
+
+// add three, remove middle
+void test_specific_case3h(void) {
+    linked_list_t *ll;
+    test_ll_data_t tll[3], *_tll;
+    
+    printf("test_specific_case3h\n");
+    
+    assert(ll = ll_create(&test_ll_ops));
+    
+    for (int i = 0; i < 3; i++) {
+        tll[i].tll_key = rand();
+        assert(ll_insert_head(ll, (void *)&tll[i]) == 0);
+    }
+    ll_check(ll);
+    
+    for (int i = 0; i < 3; i++) {
+        assert(ll_find(ll, (void *)&tll[i], (void **)&_tll) == 0);
+        assert(_tll->tll_key == tll[i].tll_key);
+    }
+    
+    assert(ll_remove(ll, (void *)&tll[1]) == 0);
+    ll_check(ll);
+    
+    assert(ll_find(ll, (void *)&tll[1], NULL) == ENOENT);
+    assert(ll_find(ll, (void *)&tll[0], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[0].tll_key);
+    assert(ll_find(ll, (void *)&tll[2], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[2].tll_key);
+    assert(!ll_empty(ll));
+    
+    ll_destroy(ll);
+}
+
+// add two, remove root
+void test_specific_case2hb(void) {
+    linked_list_t *ll;
+    test_ll_data_t tll[2], *_tll;
+    
+    printf("test_specific_case2hb\n");
+    
+    assert(ll = ll_create(&test_ll_ops));
+    
+    tll[0].tll_key = rand();
+    assert(ll_insert_head(ll, (void *)&tll[0]) == 0);
+    tll[1].tll_key = rand();
+    assert(ll_insert_head(ll, (void *)&tll[1]) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll[0], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[0].tll_key);
+    assert(ll_find(ll, (void *)&tll[1], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[1].tll_key);
+    assert(ll_remove(ll, (void *)&tll[0]) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll[0], NULL) == ENOENT);
+    assert(ll_find(ll, (void *)&tll[1], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[1].tll_key);
+    assert(!ll_empty(ll));
+    
+    ll_destroy(ll);
+}
+
+// add two, remove tail
+void test_specific_case2h(void) {
+    linked_list_t *ll;
+    test_ll_data_t tll[2], *_tll;
+    
+    printf("test_specific_case2h\n");
+    
+    assert(ll = ll_create(&test_ll_ops));
+    
+    tll[0].tll_key = rand();
+    assert(ll_insert_head(ll, (void *)&tll[0]) == 0);
+    tll[1].tll_key = rand();
+    assert(ll_insert_head(ll, (void *)&tll[1]) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll[0], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[0].tll_key);
+    assert(ll_find(ll, (void *)&tll[1], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[1].tll_key);
+    assert(ll_remove(ll, (void *)&tll[1]) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll[1], NULL) == ENOENT);
+    assert(ll_find(ll, (void *)&tll[0], (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll[0].tll_key);
+    assert(!ll_empty(ll));
+    
+    ll_destroy(ll);
+}
+
+// add and remove single element
+void test_specific_case1h(void) {
+    linked_list_t *ll;
+    test_ll_data_t tll, *_tll;
+    
+    printf("test_specific_case1h\n");
+    
+    assert(ll = ll_create(&test_ll_ops));
+    
+    tll.tll_key = rand();
+    assert(ll_insert_head(ll, (void *)&tll) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll, (void **)&_tll) == 0);
+    assert(_tll->tll_key == tll.tll_key);
+    assert(ll_remove(ll, (void *)&tll) == 0);
+    ll_check(ll);
+    assert(ll_find(ll, (void *)&tll, NULL) == ENOENT);
+    assert(ll_empty(ll));
+    
+    ll_destroy(ll);
+}
+
 void test_specific_cases(void) {
     test_specific_case1();
     test_specific_case2();
     test_specific_case2b();
     test_specific_case3();
+    test_specific_case1h();
+    test_specific_case2h();
+    test_specific_case2hb();
+    test_specific_case3h();
 }
 
 static int test_iterate_cb(void *data, void *ctx, bool *stop) {
@@ -183,7 +300,7 @@ void test_iterate(void) {
 void test_random_case(int n) {
     linked_list_t *ll;
     test_ll_data_t *tll, *_tll;
-    int j, k;
+    int j, k, hfreq;
     
     printf("test_random_case (n %d)\n", n);
     
@@ -194,9 +311,13 @@ void test_random_case(int n) {
     
     printf("  inserting %d...\n", n);
     
+    hfreq = (rand() % 10) + 1; // how often to insert elements at head
     for (int i = 0; i < n; i++) {
         tll[i].tll_key = i + 1;
-        assert(ll_insert(ll, (void *)&tll[i]) == 0);
+        if (n % hfreq)
+            assert(ll_insert(ll, (void *)&tll[i]) == 0);
+        else
+            assert(ll_insert_head(ll, (void *)&tll[i]) == 0);
         //ll_check();
     }
     ll_check(ll);
@@ -207,6 +328,7 @@ void test_random_case(int n) {
     printf("  deleting %d...\n", j);
 
     for (int i = 0; i < j; i++) {
+        //printf("deleting[%d]\n", i);
         k = rand() % n;
         if (!tll[k].tll_key) { // must have already deleted this one
             assert(ll_find(ll, (void *)&tll[k], NULL) == ENOENT);
