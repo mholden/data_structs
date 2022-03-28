@@ -95,7 +95,7 @@ static int _ht_insert(hash_table_t *ht, linked_list_t **table, size_t tsize, voi
         table[index] = ll;
     }
     
-    err = ll_insert(ll, data);
+    err = ll_insert_head(ll, data);
     if (err)
         goto error_out;
     
