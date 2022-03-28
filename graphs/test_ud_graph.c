@@ -81,7 +81,7 @@ static void test_specific_case1(void) {
     ud_graph_t *g;
     test_udg_data_t tud[6];
     udg_node_t *n[6];
-    linked_list_t *spath;
+    linked_list_t *dfspath, *bfspath;
     int path_iter;
     
     printf("test_specific_case1\n");
@@ -114,15 +114,24 @@ static void test_specific_case1(void) {
     udg_check(g);
     //udg_dump(g);
     
-    assert(udg_shortest_path_df(g, n[0], n[4], &spath) == 0);
-    assert(spath);
+    assert(udg_shortest_path_df(g, n[0], n[4], &dfspath) == 0);
+    assert(dfspath);
     
     path_iter = 0;
-    assert(ll_iterate(spath, test_specific_case1_spath_cb, (void *)&path_iter) == 0);
+    assert(ll_iterate(dfspath, test_specific_case1_spath_cb, (void *)&path_iter) == 0);
     assert(path_iter == 3);
     
-    //udg_dump(g);
-    ll_destroy(spath);
+    ll_destroy(dfspath);
+    
+    assert(udg_shortest_path_bf(g, n[0], n[4], &bfspath) == 0);
+    assert(bfspath);
+    
+    path_iter = 0;
+    assert(ll_iterate(bfspath, test_specific_case1_spath_cb, (void *)&path_iter) == 0);
+    assert(path_iter == 3);
+    
+    ll_destroy(bfspath);
+    
     udg_destroy(g);
 }
 
@@ -600,11 +609,11 @@ static void test_shortest_path_random(int n) {
 }
 
 static void test_shortest_path(int n) {
-    test_shortest_path_random(n);
     test_shortest_path_specific_case1();
     test_shortest_path_specific_case2();
     test_shortest_path_specific_case3();
     test_shortest_path_specific_case4();
+    test_shortest_path_random(n);
 }
 
 #define DEFAULT_NUM_ELEMENTS (1 << 10)
