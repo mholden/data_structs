@@ -571,11 +571,17 @@ static void test_shortest_path_specific_case1(void) {
     udg_destroy(g);
 }
 
+static double diff_timespec(struct timespec tend, struct timespec tstart) {
+    return (tend.tv_sec - tstart.tv_sec) + ((tend.tv_nsec - tstart.tv_nsec) / 1e9);
+}
+
 static void test_shortest_path_random(int n) {
     ud_graph_t *g;
     test_udg_data_t *tud, *_tud1, *_tud2;
     udg_node_t *from, *to;
-    linked_list_t *spath;
+    linked_list_t *dfspath, *bfspath;
+    struct timespec start, end;
+    double dftime, bftime;
     
     printf("test_shortest_path_random (n %d)\n", n);
     
@@ -592,15 +598,36 @@ static void test_shortest_path_random(int n) {
     assert(udg_get_node(g, (void *)_tud2, &to) == 0);
     
     //printf("  getting shortest path from %d to %d...\n", _tud1->tud_key, _tud2->tud_key);
-    assert(udg_shortest_path_df(g, from, to, &spath) == 0);
     
-    if (spath) {
-        //printf("    spath is: ");
-        //ll_dump(spath);
-        ll_destroy(spath);
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    assert(udg_shortest_path_bf(g, from, to, &bfspath) == 0);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    bftime = diff_timespec(end, start);
+    
+    /*if (bfspath) {
+        printf("    bfspath (time %fs): ", bftime);
+        ll_dump(bfspath);
     } else {
-       //printf("    no path\n");
-    }
+        printf("    no path\n");
+    }*/
+    
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    assert(udg_shortest_path_df(g, from, to, &dfspath) == 0);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    dftime = diff_timespec(end, start);
+    
+    /*if (dfspath) {
+        printf("    dfspath (time %fs): ", dftime);
+        ll_dump(dfspath);
+    }*/
+    
+    assert((dfspath && bfspath) || (!dfspath && !bfspath));
+    
+    if (bfspath)
+        ll_destroy(bfspath);
+    
+    if (dfspath)
+        ll_destroy(dfspath);
     
     udg_destroy(g);
     free(tud);

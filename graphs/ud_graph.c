@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #include "ud_graph.h"
-#include "queue.h"
+#include "fifo.h"
 #include "linked_list.h"
 
 static int udg_compare_nodes(void *data1, void *data2) {
@@ -336,7 +336,7 @@ error_out:
 
 typedef struct _udg_iterate_bf_add_adjs_cb_ctx {
     avl_tree_t *visited;
-    queue_t *q;
+    fifo_t *fifo;
 } _udg_iterate_bf_add_adjs_cb_ctx_t;
 
 int _udg_iterate_bf_add_adjs_cb(void *data, void *ctx, bool *stop) {
@@ -347,7 +347,7 @@ int _udg_iterate_bf_add_adjs_cb(void *data, void *ctx, bool *stop) {
     if (at_find(ibaa_ctx->visited, (void *)adj, NULL) == 0) // already visited this node
         goto out;
     
-    err = q_add(ibaa_ctx->q, (void *)adj);
+    err = fi_enq(ibaa_ctx->fifo, (void *)adj);
     if (err)
         goto error_out;
     
@@ -362,7 +362,7 @@ error_out:
     return err;
 }
 
-int _udg_iterate_bf(udg_node_t *start, avl_tree_t *visited, queue_t *q, int (*callback)(void *, void *, bool *), void *ctx) {
+int _udg_iterate_bf(udg_node_t *start, avl_tree_t *visited, fifo_t *fi, int (*callback)(void *, void *, bool *), void *ctx) {
     udg_node_t *next;
     _udg_iterate_bf_add_adjs_cb_ctx_t ibaa_ctx;
     bool stop = false;
@@ -370,9 +370,9 @@ int _udg_iterate_bf(udg_node_t *start, avl_tree_t *visited, queue_t *q, int (*ca
     
     memset(&ibaa_ctx, 0, sizeof(_udg_iterate_bf_add_adjs_cb_ctx_t));
     ibaa_ctx.visited = visited;
-    ibaa_ctx.q = q;
+    ibaa_ctx.fifo = fi;
     
-    err = q_add(q, (void *)start);
+    err = fi_enq(fi, (void *)start);
     if (err)
         goto error_out;
     
@@ -380,8 +380,8 @@ int _udg_iterate_bf(udg_node_t *start, avl_tree_t *visited, queue_t *q, int (*ca
     if (err)
         goto error_out;
     
-    while (!q_empty(q)) {
-        err = q_get(q, (void **)&next);
+    while (!fi_empty(fi)) {
+        err = fi_deq(fi, (void **)&next);
         if (err)
             goto error_out;
         
@@ -406,7 +406,7 @@ error_out:
 int udg_iterate_bf(ud_graph_t *g, udg_node_t *start, int (*callback)(void *, void *, bool *), void *ctx) {
     avl_tree_t *visited = NULL;
     avl_tree_ops_t aops;
-    queue_t *q;
+    fifo_t *fi;
     int err;
     
     memset(&aops, 0, sizeof(avl_tree_ops_t));
@@ -418,26 +418,26 @@ int udg_iterate_bf(ud_graph_t *g, udg_node_t *start, int (*callback)(void *, voi
         goto error_out;
     }
     
-    q = q_create(g->g_nodes->at_nnodes);
-    if (!q) {
+    fi = fi_create(NULL);
+    if (!fi) {
         err = ENOMEM;
         goto error_out;
     }
     
-    err = _udg_iterate_bf(start, visited, q, callback, ctx);
+    err = _udg_iterate_bf(start, visited, fi, callback, ctx);
     if (err)
         goto error_out;
     
     at_destroy(visited);
-    q_destroy(q);
+    fi_destroy(fi);
     
     return 0;
     
 error_out:
     if (visited)
         at_destroy(visited);
-    if (q)
-        q_destroy(q);
+    if (fi)
+        fi_destroy(fi);
         
     return err;
 }
@@ -638,7 +638,210 @@ error_out:
     return err;
 }
 
-int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **spath) {
-    assert(0);
+typedef struct udg_shortest_path_bf_node {
+    udg_node_t *node;
+    udg_node_t *backpointer;
+} udg_shortest_path_bf_node_t;
+
+typedef struct udg_shortest_path_bf_add_adjs_cb_ctx {
+    avl_tree_t *visited;
+    fifo_t *fifo;
+    udg_node_t *backpointer;
+    udg_node_t *to;
+    bool found;
+} udg_shortest_path_bf_add_adjs_cb_ctx_t;
+
+int _udg_shortest_path_bf_add_adjs_cb(void *data, void *ctx, bool *stop) {
+    udg_node_t *adj = (udg_node_t *)data;
+    udg_shortest_path_bf_node_t search_node, *spnode;
+    udg_shortest_path_bf_add_adjs_cb_ctx_t *ibaa_ctx = (udg_shortest_path_bf_add_adjs_cb_ctx_t *)ctx;
+    int err;
+    
+    memset(&search_node, 0, sizeof(udg_shortest_path_bf_node_t));
+    search_node.node = adj;
+    
+    if (at_find(ibaa_ctx->visited, (void *)&search_node, NULL) == 0) // already visited this node
+        goto out;
+    
+    spnode = malloc(sizeof(udg_shortest_path_bf_node_t));
+    if (!spnode) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    spnode->node = adj;
+    spnode->backpointer = ibaa_ctx->backpointer;
+    
+    err = at_insert(ibaa_ctx->visited, (void *)spnode);
+    if (err)
+        goto error_out;
+    
+    if (udg_compare_nodes(adj, ibaa_ctx->to) == 0) { // this is the destination node
+        ibaa_ctx->found = true;
+        *stop = true;
+        goto out;
+    }
+    
+    err = fi_enq(ibaa_ctx->fifo, (void *)adj);
+    if (err)
+        goto error_out;
+    
+out:
     return 0;
+    
+error_out:
+    if (spnode)
+        free(spnode);
+    
+    return err;
+}
+
+int _udg_shortest_path_bf(udg_node_t *from, udg_node_t *to, avl_tree_t *visited, fifo_t *fi, linked_list_t **spath) {
+    udg_shortest_path_bf_node_t *spnode = NULL, search_node;
+    udg_node_t *next;
+    udg_shortest_path_bf_add_adjs_cb_ctx_t ibaa_ctx;
+    linked_list_t *_spath = NULL;
+    int err;
+    
+    err = fi_enq(fi, (void *)from);
+    if (err)
+        goto error_out;
+    
+    spnode = malloc(sizeof(udg_shortest_path_bf_node_t));
+    if (!spnode) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    spnode->node = from;
+    spnode->backpointer = NULL;
+    
+    err = at_insert(visited, (void *)spnode);
+    if (err)
+        goto error_out;
+    
+    memset(&ibaa_ctx, 0, sizeof(udg_shortest_path_bf_add_adjs_cb_ctx_t));
+    ibaa_ctx.visited = visited;
+    ibaa_ctx.fifo = fi;
+    ibaa_ctx.to = to;
+    ibaa_ctx.found = false;
+    
+    while (!fi_empty(fi)) {
+        err = fi_deq(fi, (void **)&next);
+        if (err)
+            goto error_out;
+        
+        ibaa_ctx.backpointer = next;
+        err = at_iterate(next->n_adjs, _udg_shortest_path_bf_add_adjs_cb, (void *)&ibaa_ctx);
+        if (err)
+            goto error_out;
+        if (ibaa_ctx.found)
+            break;
+    }
+    
+    if (ibaa_ctx.found) {
+        _spath = ll_create(&udg_spath_ll_ops);
+        if (!_spath) {
+            err = ENOMEM;
+            goto error_out;
+        }
+        
+        memset(&search_node, 0, sizeof(udg_shortest_path_bf_node_t));
+        search_node.node = to;
+        
+        err = at_find(visited, (void *)&search_node, (void **)&spnode);
+        if (err)
+            goto error_out;
+        
+        err = ll_insert_head(_spath, spnode->node);
+        if (err)
+            goto error_out;
+        
+        while (spnode->backpointer) {
+            search_node.node = spnode->backpointer;
+    
+            err = at_find(visited, (void *)&search_node, (void **)&spnode);
+            if (err)
+                goto error_out;
+            
+            err = ll_insert_head(_spath, spnode->node);
+            if (err)
+                goto error_out;
+        }
+    }
+    
+    *spath = _spath;
+    
+    return 0;
+    
+error_out:
+    if (spnode)
+        free(spnode);
+    if (_spath)
+        ll_destroy(_spath);
+    
+    return err;
+}
+
+static int udg_shortest_path_bf_compare_nodes(void *data1, void *data2) {
+    udg_shortest_path_bf_node_t *node1, *node2;
+    
+    node1 = (udg_shortest_path_bf_node_t *)data1;
+    node2 = (udg_shortest_path_bf_node_t *)data2;
+    
+    return udg_compare_nodes(node1->node, node2->node);
+}
+
+static void udg_shortest_path_bf_destroy_node(void *data) {
+    udg_shortest_path_bf_node_t *spnode = (udg_shortest_path_bf_node_t *)data;
+    free(spnode);
+}
+
+int udg_shortest_path_bf(ud_graph_t *g, udg_node_t *from, udg_node_t *to, linked_list_t **spath) {
+    avl_tree_t *visited = NULL;
+    avl_tree_ops_t aops;
+    fifo_t *fi;
+    int err;
+    
+    if (at_find(g->g_nodes, (void *)to, NULL)) { // destination doesn't exist
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    if (at_empty(to->n_adjs)) // destination isn't connected to any other node
+        goto out;
+    
+    memset(&aops, 0, sizeof(avl_tree_ops_t));
+    aops.ato_compare_fn = udg_shortest_path_bf_compare_nodes;
+    aops.ato_destroy_data_fn = udg_shortest_path_bf_destroy_node;
+    
+    visited = at_create(&aops);
+    if (!visited) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    fi = fi_create(NULL);
+    if (!fi) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    err = _udg_shortest_path_bf(from, to, visited, fi, spath);
+    if (err)
+        goto error_out;
+    
+    at_destroy(visited);
+    fi_destroy(fi);
+    
+out:
+    return 0;
+    
+error_out:
+    if (visited)
+        at_destroy(visited);
+    if (fi)
+        fi_destroy(fi);
+        
+    return err;
 }

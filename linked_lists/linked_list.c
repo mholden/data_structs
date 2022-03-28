@@ -22,7 +22,10 @@ linked_list_t *ll_create(linked_list_ops_t *lops) {
         printf("ll_create: failed to allocate memory for ll_ops\n");
         goto error_out;
     }
-    memcpy(ll->ll_ops, lops, sizeof(linked_list_ops_t));
+    if (lops)
+        memcpy(ll->ll_ops, lops, sizeof(linked_list_ops_t));
+    else
+        memset(ll->ll_ops, 0, sizeof(linked_list_ops_t));
     
     return ll;
     
