@@ -114,6 +114,10 @@ int ll_insert(linked_list_t *ll, void *data) {
     prev = NULL;
     curr = ll->ll_root;
     while (curr) {
+        if (ll->ll_ops->llo_compare_fn(curr->ln_data, data) == 0) {
+            err = EEXIST;
+            goto error_out;
+        }
         prev = curr;
         curr = curr->ln_next;
     }
@@ -130,11 +134,14 @@ int ll_insert(linked_list_t *ll, void *data) {
     return 0;
     
 error_out:
+    if (new_node)
+        free(new_node);
+    
     return err;
 }
 
 int ll_insert_head(linked_list_t *ll, void *data) {
-    ll_node_t *new_node;
+    ll_node_t *new_node, *curr;
     int err;
     
     new_node = (ll_node_t *)malloc(sizeof(ll_node_t));
@@ -144,6 +151,16 @@ int ll_insert_head(linked_list_t *ll, void *data) {
     }
     memset(new_node, 0, sizeof(ll_node_t));
     new_node->ln_data = data;
+    
+    // first check if it already exists
+    curr = ll->ll_root;
+    while (curr) {
+        if (ll->ll_ops->llo_compare_fn(curr->ln_data, data) == 0) {
+            err = EEXIST;
+            goto error_out;
+        }
+        curr = curr->ln_next;
+    }
     
     new_node->ln_next = ll->ll_root;
     ll->ll_root = new_node;
