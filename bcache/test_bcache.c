@@ -78,6 +78,19 @@ static block_t *tbco_block(tbco_t *tbco) {
     return tbco->bco_block;
 }
 
+static int tbco_lock_exclusive(tbco_t *tbco) {
+    return rwl_lock_exclusive(tbco_block(tbco)->bl_rwlock);
+}
+
+static int tbco_lock_shared(tbco_t *tbco) {
+    return rwl_lock_shared(tbco_block(tbco)->bl_rwlock);
+}
+
+static int tbco_unlock(tbco_t *tbco) {
+    return rwl_unlock(tbco_block(tbco)->bl_rwlock);
+}
+
+
 static void create_and_init_backing_file(const char *fname) {
     int fd;
     uint64_t data;
@@ -138,6 +151,9 @@ static void test_bcache2(void) {
     
     bc_check(bc);
     
+    // all blocks should have been flushed via bc_get, so no need to bc_flush
+    assert(LIST_EMPTY(&bc->bc_dl));
+    
     bc_destroy(bc);
     free(fname);
 }
@@ -176,11 +192,120 @@ static void test_bcache1(void) {
     free(fname);
 }
 
-#define DEFAULT_NUM_ELEMENTS (1 << 10)
+static void dump_blocks(uint64_t *blocks) {
+    for (int i = 0; i < TEST_BCACHE_NFBLOCKS; i++)
+        printf("blocks[%d]: %" PRIu64 "\n", i, blocks[i]);
+}
+
+typedef struct tbr_thr_start_arg {
+    thread_t *t;
+    uint64_t *blocks;
+    bcache_t *bc;
+    int num_ops;
+} tbr_thr_start_arg_t;
+
+static int tbr_thr_start(void *arg) {
+    tbr_thr_start_arg_t *targ = (tbr_thr_start_arg_t *)arg;
+    thread_t *t = targ->t;
+    uint64_t *blocks = targ->blocks;
+    bcache_t *bc = targ->bc;
+    int op, num_ops = targ->num_ops;
+    uint64_t blkno;
+    tbco_t *tbco;
+    tbco_phys_t *tbcop;
+    
+    for (int i = 0; i < num_ops; i++) {
+        op = rand() % 2;
+        blkno = rand() % TEST_BCACHE_NFBLOCKS;
+        assert(bc_get(bc, blkno, (void **)&tbco) == 0);
+        tbcop = tbco->bco_phys;
+        if (op == 0) { // write
+            assert(tbco_lock_exclusive(tbco) == 0);
+            //printf("  thread %s writing to block %u (%" PRIu64 ") (%" PRIu64 ") (iter %d)\n", t->t_name, blkno, tbcop->bcp_data, blocks[blkno], i);
+            //bc_check(bc);
+            //bc_dump(bc);
+            assert(tbcop->bcp_data == blocks[blkno]);
+            tbcop->bcp_data++;
+            bc_dirty(bc, tbco_block(tbco));
+            blocks[blkno] = tbcop->bcp_data;
+        } else if (op == 1) { // read
+            assert(tbco_lock_shared(tbco) == 0);
+            //printf("  thread %s reading from block %u (%" PRIu64 ") (%" PRIu64 ") (iter %d)\n", t->t_name, blkno, tbcop->bcp_data, blocks[blkno], i);
+            //bc_check(bc);
+            //bc_dump(bc);
+            assert(tbcop->bcp_data == blocks[blkno]);
+        }
+        assert(tbco_unlock(tbco) == 0);
+        bc_release(bc, tbco_block(tbco));
+        
+        // flush every so often
+        if ((blkno % (num_ops / 8)) == 0)
+            bc_flush(bc);
+        
+        bc_check(bc);
+    }
+    
+    return 0;
+}
+
+static void test_bcache_random(int num_ops) {
+    bcache_t *bc;
+    char *tname = "test_bcache_random", *fname, thr_name[5];;
+    uint64_t *blocks;
+    thread_t *threads[8];
+    tbr_thr_start_arg_t targ[8];
+    
+    printf("%s (num_ops %d)\n", tname, num_ops);
+    
+    assert(fname = malloc(strlen(TEST_BCACHE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BCACHE_DIR, tname);
+    
+    create_and_init_backing_file(fname);
+    
+    assert(blocks = malloc(sizeof(uint64_t) * TEST_BCACHE_NFBLOCKS));
+    
+    for (int i = 0; i < TEST_BCACHE_NFBLOCKS; i++)
+        blocks[i] = (uint64_t)i;
+    
+    //dump_blocks(blocks);
+    
+    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ, &tbco_ops));
+    
+    // spawn 8 threads, have them each do num_ops / 8 random operations
+    for (int i = 0; i < 8; i++) {
+        sprintf(thr_name, "%s%d", "thr", i);
+        assert(threads[i] = thread_create(thr_name));
+        
+        memset(&targ[i], 0, sizeof(tbr_thr_start_arg_t));
+        targ[i].t = threads[i];
+        targ[i].blocks = blocks;
+        targ[i].bc = bc;
+        targ[i].num_ops = num_ops / 8;
+        
+        assert(thread_start(threads[i], tbr_thr_start, &targ[i]) == 0);
+    }
+    
+    for (int i = 0; i < 8; i++)
+        assert(thread_wait(threads[i], NULL) == 0);
+    
+    for (int i = 0; i < 8; i++)
+        thread_destroy(threads[i]);
+    
+    bc_flush(bc);
+    
+    bc_check(bc);
+    bc_dump(bc);
+    
+    bc_destroy(bc);
+    free(fname);
+    free(blocks);
+}
+
+#define DEFAULT_NUM_OPS (TEST_BCACHE_NFBLOCKS * 8)
 
 int main(int argc, char **argv) {
     unsigned int seed = 0;
-    int ch, num_elements = DEFAULT_NUM_ELEMENTS, err;
+    int ch, num_ops = DEFAULT_NUM_OPS, err;
     
     struct option longopts[] = {
         { "num",    required_argument,   NULL,   'n' },
@@ -191,7 +316,7 @@ int main(int argc, char **argv) {
     while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
         switch (ch) {
             case 'n':
-                num_elements = (int)strtol(optarg, NULL, 10);
+                num_ops = (int)strtol(optarg, NULL, 10);
                 break;
             case 's':
                 seed = (unsigned int)strtol(optarg, NULL, 10);
@@ -214,6 +339,7 @@ int main(int argc, char **argv) {
     
     test_bcache1();
     test_bcache2();
+    test_bcache_random(num_ops);
     
     return 0;
 }

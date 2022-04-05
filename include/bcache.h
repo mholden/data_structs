@@ -2,7 +2,8 @@
 #define _BLOCK_CACHE_H_
 
 #include <stdint.h>
-#include <sys/queue.h>
+#include <sys/queue.h> // on macOS
+#include <bsd/sys/queue.h> // on Linux
 
 #include "hash_table.h"
 #include "linked_list.h"
@@ -13,7 +14,7 @@
 #define B_DIRTY 0x0001 // block is dirty
 
 typedef struct block {
-    rw_lock_t *bl_rwlock; // XXX: do we need / want this?
+    rw_lock_t *bl_rwlock;
     uint64_t bl_blkno;
     int bl_refcnt;
     uint32_t bl_flags;
@@ -38,6 +39,13 @@ typedef struct block_list block_list_t;
 TAILQ_HEAD(block_tailq, block);
 typedef struct block_tailq block_tailq_t;
 
+typedef struct bc_stats {
+    uint64_t bcs_hits;
+    uint64_t bcs_misses;
+    uint64_t bcs_writes;
+    uint64_t bcs_flushes;
+} bc_stats_t;
+
 typedef struct bcache {
     lock_t *bc_lock;
     int bc_fd;
@@ -48,6 +56,7 @@ typedef struct bcache {
     uint32_t bc_blksz;
     uint32_t bc_currsz;
     uint32_t bc_maxsz;
+    bc_stats_t bc_stats;
 } bcache_t;
 
 bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz, bco_ops_t *bco_ops);
@@ -56,6 +65,8 @@ void bc_destroy(bcache_t *bc);
 int bc_get(bcache_t *bc, uint64_t blkno, void **bco);
 void bc_dirty(bcache_t *bc, block_t *b);
 void bc_release(bcache_t *bc, block_t *b);
+
+int bc_flush(bcache_t *bc);
 
 void bc_dump(bcache_t *bc);
 void bc_check(bcache_t *bc);
