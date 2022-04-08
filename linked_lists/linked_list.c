@@ -230,6 +230,32 @@ error_out:
     return err;
 }
 
+int ll_get_random(linked_list_t *ll, void **data) {
+    ll_node_t *n;
+    size_t nnum;
+    int err;
+    
+    if (ll_empty(ll)) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    n = ll->ll_root;
+    
+    nnum = rand() % ll_length(ll);
+    while (nnum) {
+        n = n->ln_next;
+        nnum--;
+    }
+    
+    *data = n->ln_data;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 size_t ll_length(linked_list_t *ll) {
     return ll->ll_nnodes;
 }

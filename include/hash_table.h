@@ -29,6 +29,9 @@ int ht_remove(hash_table_t *ht, void *to_remove);
 
 unsigned int ht_default_hash(void *key, size_t keysz);
 
+bool ht_empty(hash_table_t *ht);
+int ht_get_random(hash_table_t *ht, void **data);
+
 bool ht_needs_resize(hash_table_t *ht);
 int ht_resize(hash_table_t *ht);
 

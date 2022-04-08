@@ -234,6 +234,37 @@ error_out:
     return err;
 }
 
+bool ht_empty(hash_table_t *ht) {
+    return (ht->ht_nelements == 0);
+}
+
+int ht_get_random(hash_table_t *ht, void **data) {
+    linked_list_t *ll;
+    size_t ind;
+    int err;
+    
+    if (ht_empty(ht)) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    ind = rand() % ht->ht_size;
+    ll = ht->ht_table[ind];
+    while (!ll || ll_empty(ll)) {
+        ind = (ind + 1) % ht->ht_size;
+        ll = ht->ht_table[ind];
+    }
+    
+    err = ll_get_random(ll, data);
+    if (err)
+        goto error_out;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 typedef struct ht_iterate_cb_ctx {
     int (*callback)(void *, void *, bool *);
     void *ctx;

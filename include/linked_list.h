@@ -34,6 +34,8 @@ int ll_remove(linked_list_t *ll, void *to_remove);
 bool ll_empty(linked_list_t *ll);
 size_t ll_length(linked_list_t *ll);
 
+int ll_get_random(linked_list_t *ll, void **data);
+
 int ll_iterate(linked_list_t *ll, int (*callback)(void *data, void *ctx, bool *stop), void *ctx);
 
 void ll_dump(linked_list_t *ll);
