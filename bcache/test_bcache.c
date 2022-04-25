@@ -39,7 +39,7 @@ typedef struct test_bcache_object { // btree node, for example
 
 static int tbco_init(void **bco, block_t *b) {
     tbco_t **tbco, *_tbco;
-    tbco_phys_t *tbcop = (tbco_phys_t *)b->bl_data;
+    tbco_phys_t *tbcop = (tbco_phys_t *)b->bl_phys;
     int err;
     
     tbco = (tbco_t **)bco;
@@ -127,10 +127,10 @@ static void test_bcache2(void) {
     
     create_and_init_backing_file(fname);
     
-    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ, &tbco_ops));
+    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ));
     
     for (int i = 0; i < TEST_BCACHE_NFBLOCKS; i++) {
-        assert(bc_get(bc, i, (void **)&tbco) == 0);
+        assert(bc_get(bc, i, &tbco_ops, (void **)&tbco) == 0);
         tbcop = tbco->bco_phys;
         assert(tbcop->bcp_data == (uint64_t)i);
         tbcop->bcp_data++;
@@ -143,7 +143,7 @@ static void test_bcache2(void) {
     }
     
     for (int i = 0; i < TEST_BCACHE_NFBLOCKS; i++) {
-        assert(bc_get(bc, i, (void **)&tbco) == 0);
+        assert(bc_get(bc, i, &tbco_ops, (void **)&tbco) == 0);
         tbcop = tbco->bco_phys;
         assert(tbcop->bcp_data == (uint64_t)(i + 1));
         bc_release(bc, tbco_block(tbco));
@@ -175,10 +175,10 @@ static void test_bcache1(void) {
     
     create_and_init_backing_file(fname);
     
-    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ, &tbco_ops));
+    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ));
     
     for (int i = 0; i < TEST_BCACHE_NFBLOCKS; i++) {
-        assert(bc_get(bc, i, (void **)&tbco) == 0);
+        assert(bc_get(bc, i, &tbco_ops, (void **)&tbco) == 0);
         tbcop = tbco->bco_phys;
         assert(tbcop->bcp_data == (uint64_t)i);
         bc_check(bc);
@@ -217,7 +217,7 @@ static int tbr_thr_start(void *arg) {
     for (int i = 0; i < num_ops; i++) {
         op = rand() % 2;
         blkno = rand() % TEST_BCACHE_NFBLOCKS;
-        assert(bc_get(bc, blkno, (void **)&tbco) == 0);
+        assert(bc_get(bc, blkno, &tbco_ops, (void **)&tbco) == 0);
         tbcop = tbco->bco_phys;
         if (op == 0) { // write
             assert(tbco_lock_exclusive(tbco) == 0);
@@ -269,7 +269,7 @@ static void test_bcache_random(int num_ops) {
     
     //dump_blocks(blocks);
     
-    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ, &tbco_ops));
+    assert(bc = bc_create(fname, TEST_BCACHE_BLKSZ, TEST_BCACHE_MAXSZ));
     
     // spawn 8 threads, have them each do num_ops / 8 random operations
     for (int i = 0; i < 8; i++) {
@@ -294,7 +294,7 @@ static void test_bcache_random(int num_ops) {
     bc_flush(bc);
     
     bc_check(bc);
-    bc_dump(bc);
+    //bc_dump(bc);
     
     bc_destroy(bc);
     free(fname);

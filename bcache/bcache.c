@@ -6,8 +6,34 @@
 #include <errno.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "bcache.h"
+
+uint32_t bl_phys_type(blk_phys_t *bp) {
+    return bp->bp_type;
+}
+
+void bl_phys_dump(blk_phys_t *bp) {
+    printf("bp_type %" PRIu32 " ", bp->bp_type);
+}
+
+blk_phys_t *bl_phys(block_t *b) {
+    return b->bl_phys;
+}
+
+uint32_t bl_type(block_t *b) {
+    return bl_phys_type(bl_phys(b));
+}
+
+void bl_dump(block_t *b) {
+    printf("bl_blkno: %llu bl_refcount: %d%s ", b->bl_blkno, b->bl_refcnt,
+            (b->bl_flags & B_DIRTY) ? " B_DIRTY" : "");
+    if (b->bl_bco_ops->bco_dump) {
+        printf("bl_bco: ");
+        b->bl_bco_ops->bco_dump(b->bl_bco);
+    }
+}
 
 static void bc_dump_locked(bcache_t *bc) {
     block_t *b;
@@ -25,11 +51,8 @@ static void bc_dump_locked(bcache_t *bc) {
         if (!LIST_EMPTY(bl)) {
             printf("bc_ht[%d]:\n", i);
             LIST_FOREACH(b, bl, bl_ht_link) {
-                printf(" bl_blkno: %llu bl_refcount: %d%s ", b->bl_blkno, b->bl_refcnt, (b->bl_flags & B_DIRTY) ? " B_DIRTY" : "");
-                if (bc->bc_ops->bco_dump) {
-                    printf("bl_bco: ");
-                    bc->bc_ops->bco_dump(b->bl_bco);
-                }
+                printf(" ");
+                bl_dump(b);
                 printf("\n");
             }
         }
@@ -51,7 +74,7 @@ void bc_dump(bcache_t *bc) {
     return;
 }
 
-bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz, bco_ops_t *ops){
+bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz){
     bcache_t *bc = NULL;
     
     bc = malloc(sizeof(bcache_t));
@@ -79,14 +102,6 @@ bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz, bco_ops_t *ops){
         goto error_out;
     
     memset(bc->bc_ht, 0, sizeof(block_list_t) * ((bc->bc_maxsz / bc->bc_blksz) * 2));
-    
-    bc->bc_ops = malloc(sizeof(bco_ops_t));
-    if (!bc->bc_ops)
-        goto error_out;
-    if (ops)
-        memcpy(bc->bc_ops, ops, sizeof(bco_ops_t));
-    else
-        memset(bc->bc_ops, 0, sizeof(bco_ops_t));
     
     TAILQ_INIT(&bc->bc_fl);
     
@@ -118,8 +133,9 @@ void bc_destroy(bcache_t *bc) {
         bl = &bc->bc_ht[i];
         if (!LIST_EMPTY(bl)) {
             LIST_FOREACH_SAFE(b, bl, bl_ht_link, bnext) {
-                bc->bc_ops->bco_destroy(b->bl_bco);
-                free(b->bl_data);
+                b->bl_bco_ops->bco_destroy(b->bl_bco);
+                free(b->bl_bco_ops);
+                free(b->bl_phys);
                 assert(b->bl_refcnt == 0);
                 if (b->bl_flags & B_DIRTY)
                     printf("bc_destroy: bl_blkno %" PRIu64 " destroyed while dirty\n", b->bl_blkno);
@@ -128,14 +144,13 @@ void bc_destroy(bcache_t *bc) {
         }
     }
     
-    free(bc->bc_ops);
     free(bc->bc_ht);
     close(bc->bc_fd);
     lock_destroy(bc->bc_lock);
     free(bc);
 }
 
-int bc_get(bcache_t *bc, uint64_t blkno, void **bco) {
+int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
     block_t *b;
     block_list_t *bl;
     bool alloced_b = false;
@@ -169,7 +184,7 @@ int bc_get(bcache_t *bc, uint64_t blkno, void **bco) {
         // flush it out if it's dirty
         if (b->bl_flags & B_DIRTY) {
             // TODO: drop lock
-            if (pwrite(bc->bc_fd, b->bl_data, bc->bc_blksz, b->bl_blkno * bc->bc_blksz) != bc->bc_blksz) {
+            if (pwrite(bc->bc_fd, b->bl_phys, bc->bc_blksz, b->bl_blkno * bc->bc_blksz) != bc->bc_blksz) {
                 err = EIO;
                 goto error_out;
             }
@@ -179,7 +194,7 @@ int bc_get(bcache_t *bc, uint64_t blkno, void **bco) {
         }
         
         // read in the new block
-        if (pread(bc->bc_fd, b->bl_data, bc->bc_blksz, blkno * bc->bc_blksz) != bc->bc_blksz) {
+        if (pread(bc->bc_fd, b->bl_phys, bc->bc_blksz, blkno * bc->bc_blksz) != bc->bc_blksz) {
             err = EIO;
             goto error_out;
         }
@@ -210,23 +225,31 @@ int bc_get(bcache_t *bc, uint64_t blkno, void **bco) {
             goto error_out;
         }
         
-        b->bl_data = malloc(bc->bc_blksz);
-        if (!b->bl_data) {
-            printf("bc_get: failed to allocate memory for bl_data\n");
+        b->bl_bco_ops = malloc(sizeof(bco_ops_t));
+        if (!b->bl_bco_ops) {
+            printf("bc_get: failed to allocate memory for bl_bco_ops\n");
+            err = ENOMEM;
+            goto error_out;
+        }
+        memcpy(b->bl_bco_ops, bco_ops, sizeof(bco_ops_t));
+        
+        b->bl_phys = malloc(bc->bc_blksz);
+        if (!b->bl_phys) {
+            printf("bc_get: failed to allocate memory for bl_phys\n");
             err = ENOMEM;
             goto error_out;
         }
         
         // TODO: this should loop until all data is read in as long as pread != -1; short reads aren't errors
         // TODO: drop lock
-        if (pread(bc->bc_fd, b->bl_data, bc->bc_blksz, blkno * bc->bc_blksz) != bc->bc_blksz) {
+        if (pread(bc->bc_fd, b->bl_phys, bc->bc_blksz, blkno * bc->bc_blksz) != bc->bc_blksz) {
             err = EIO;
             goto error_out;
         }
         
         b->bl_blkno = blkno;
         
-        err = bc->bc_ops->bco_init(bco, b);
+        err = b->bl_bco_ops->bco_init(bco, b);
         if (err)
             goto error_out;
         
@@ -254,8 +277,10 @@ error_out:
     if (alloced_b) {
         if (b->bl_rwlock)
             rwl_destroy(b->bl_rwlock);
-        if (b->bl_data)
-            free(b->bl_data);
+        if (b->bl_bco_ops)
+            free(b->bl_bco_ops);
+        if (b->bl_phys)
+            free(b->bl_phys);
         free(b);
     }
     
@@ -291,7 +316,7 @@ int bc_flush(bcache_t *bc) {
     lock_lock(bc->bc_lock);
     LIST_FOREACH_SAFE(b, &bc->bc_dl, bl_dl_link, bnext) {
         assert(b->bl_flags & B_DIRTY);
-        if (pwrite(bc->bc_fd, b->bl_data, bc->bc_blksz, b->bl_blkno * bc->bc_blksz) != bc->bc_blksz) {
+        if (pwrite(bc->bc_fd, b->bl_phys, bc->bc_blksz, b->bl_blkno * bc->bc_blksz) != bc->bc_blksz) {
             err = EIO;
             goto error_out;
         }
@@ -335,8 +360,8 @@ void bc_check(bcache_t *bc) {
                 }
                 assert((free && (b->bl_refcnt == 0)) || (b->bl_refcnt > 0));
                 assert((dirty && (b->bl_flags & B_DIRTY)) || !(b->bl_flags & B_DIRTY));
-                if (bc->bc_ops->bco_check)
-                    bc->bc_ops->bco_check(b->bl_bco);
+                if (b->bl_bco_ops->bco_check)
+                    b->bl_bco_ops->bco_check(b->bl_bco);
                 nblocks++;
             }
         }
