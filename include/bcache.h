@@ -9,11 +9,11 @@
 
 // block cache (used to cache blocks either from a file or disk)
 
-typedef struct block block_t;
+typedef struct block blk_t;
 
 // 'block cache object' operations
 typedef struct bco_ops {
-    int (*bco_init)(void **bco, block_t *b);
+    int (*bco_init)(void **bco, blk_t *b);
     void (*bco_destroy)(void *bco);
     void (*bco_dump)(void *bco);
     void (*bco_check)(void *bco);
@@ -51,15 +51,15 @@ struct block {
     blk_phys_t *bl_phys;
 };
 
-blk_phys_t *bl_phys(block_t *b);
-uint32_t bl_type(block_t *b);
-void bl_dump(block_t *b);
+blk_phys_t *bl_phys(blk_t *b);
+uint32_t bl_type(blk_t *b);
+void bl_dump(blk_t *b);
 
-LIST_HEAD(block_list, block);
-typedef struct block_list block_list_t;
+LIST_HEAD(blk_list, block);
+typedef struct blk_list blk_list_t;
 
-TAILQ_HEAD(block_tailq, block);
-typedef struct block_tailq block_tailq_t;
+TAILQ_HEAD(blk_tailq, block);
+typedef struct blk_tailq blk_tailq_t;
 
 //
 // bcache_t:
@@ -75,9 +75,9 @@ typedef struct bc_stats {
 typedef struct bcache {
     lock_t *bc_lock;
     int bc_fd;
-    block_list_t *bc_ht; // hash table
-    block_list_t bc_dl; // dirty list
-    block_tailq_t bc_fl; // free list
+    blk_list_t *bc_ht; // hash table
+    blk_list_t bc_dl; // dirty list
+    blk_tailq_t bc_fl; // free list
     uint32_t bc_blksz;
     uint32_t bc_currsz;
     uint32_t bc_maxsz;
@@ -88,8 +88,8 @@ bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz);
 void bc_destroy(bcache_t *bc);
 
 int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco);
-void bc_dirty(bcache_t *bc, block_t *b);
-void bc_release(bcache_t *bc, block_t *b);
+void bc_dirty(bcache_t *bc, blk_t *b);
+void bc_release(bcache_t *bc, blk_t *b);
 
 int bc_flush(bcache_t *bc);
 

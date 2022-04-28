@@ -33,11 +33,11 @@ typedef struct tbco_phys { // btree node phys, for example
 } tbco_phys_t;
 
 typedef struct test_bcache_object { // btree node, for example
-    block_t *bco_block;
+    blk_t *bco_block;
     tbco_phys_t *bco_phys;
 } tbco_t;
 
-static int tbco_init(void **bco, block_t *b) {
+static int tbco_init(void **bco, blk_t *b) {
     tbco_t **tbco, *_tbco;
     tbco_phys_t *tbcop = (tbco_phys_t *)b->bl_phys;
     int err;
@@ -74,7 +74,7 @@ static bco_ops_t tbco_ops = {
     .bco_check = NULL
 };
 
-static block_t *tbco_block(tbco_t *tbco) {
+static blk_t *tbco_block(tbco_t *tbco) {
     return tbco->bco_block;
 }
 

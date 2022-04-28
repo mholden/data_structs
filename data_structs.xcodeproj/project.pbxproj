@@ -10,7 +10,6 @@
 		2A1A9E261CB06ED40080330D /* test_ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E021CB06E4A0080330D /* test_ud_graph.c */; };
 		2A1A9E271CB06ED40080330D /* ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E031CB06E4A0080330D /* ud_graph.c */; };
 		2A1A9E311CB0886F0080330D /* btree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E2A1CB082450080330D /* btree.c */; };
-		2A1A9E321CB0886F0080330D /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E291CB082450080330D /* main.c */; };
 		2A590C001CF2A4F700FA4EBC /* linked_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFC1CF2A4F700FA4EBC /* linked_list.c */; };
 		2A590C121CF2C8E000FA4EBC /* hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFB1CF2A4F700FA4EBC /* hash_table.c */; };
 		2A590C131CF2C8E000FA4EBC /* linked_list.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFC1CF2A4F700FA4EBC /* linked_list.c */; };
@@ -18,6 +17,7 @@
 		2A5DD6F127F1E3FA00D8F740 /* test_heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A5DD6EB27F1E39700D8F740 /* test_heap.c */; };
 		2A5DD6F227F1E40C00D8F740 /* fifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A5DD6E727F1E39700D8F740 /* fifo.c */; };
 		2A5DD6F627F1E52F00D8F740 /* test_fifo.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A5DD6F427F1E52F00D8F740 /* test_fifo.c */; };
+		2A7635E92816FC1600CB15A9 /* test_btree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A7635E32816FB3F00CB15A9 /* test_btree.c */; };
 		2A893D2D27ECA7A900F6B29F /* test_avl_tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A893D2A27ECA7A800F6B29F /* test_avl_tree.c */; };
 		2A893D2E27ECA7A900F6B29F /* avl_tree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A893D2B27ECA7A800F6B29F /* avl_tree.c */; };
 		2A893D3127ECA94D00F6B29F /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 2A893D3027ECA94D00F6B29F /* Makefile */; };
@@ -132,9 +132,7 @@
 		2A1A9E071CB06E5B0080330D /* ud_graph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ud_graph.h; path = include/ud_graph.h; sourceTree = SOURCE_ROOT; };
 		2A1A9E181CB06EB30080330D /* ud_graphs */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ud_graphs; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A1A9E241CB06EBA0080330D /* fifo */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = fifo; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A1A9E291CB082450080330D /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = main.c; path = btrees/main.c; sourceTree = SOURCE_ROOT; };
 		2A1A9E2A1CB082450080330D /* btree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = btree.c; path = btrees/btree.c; sourceTree = SOURCE_ROOT; };
-		2A1A9E2E1CB082520080330D /* btree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = btree.h; path = btrees/include/btree.h; sourceTree = SOURCE_ROOT; };
 		2A1A9E3C1CB0886F0080330D /* btree */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = btree; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A590BF51CF2A4ED00FA4EBC /* binary_tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = binary_tree.h; path = include/binary_tree.h; sourceTree = SOURCE_ROOT; };
 		2A590BF61CF2A4ED00FA4EBC /* hash_table.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hash_table.h; path = include/hash_table.h; sourceTree = SOURCE_ROOT; };
@@ -151,6 +149,9 @@
 		2A5DD6EB27F1E39700D8F740 /* test_heap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_heap.c; sourceTree = "<group>"; };
 		2A5DD6F327F1E52F00D8F740 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		2A5DD6F427F1E52F00D8F740 /* test_fifo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_fifo.c; sourceTree = "<group>"; };
+		2A7635D62816FB0900CB15A9 /* btree.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btree.h; sourceTree = "<group>"; };
+		2A7635E32816FB3F00CB15A9 /* test_btree.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_btree.c; sourceTree = "<group>"; };
+		2A7635E42816FB3F00CB15A9 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		2A893D2927ECA7A800F6B29F /* avl_tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = avl_tree.h; sourceTree = "<group>"; };
 		2A893D2A27ECA7A800F6B29F /* test_avl_tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test_avl_tree.c; path = avl_trees/test_avl_tree.c; sourceTree = SOURCE_ROOT; };
 		2A893D2B27ECA7A800F6B29F /* avl_tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = avl_tree.c; path = avl_trees/avl_tree.c; sourceTree = SOURCE_ROOT; };
@@ -302,19 +303,10 @@
 		2A1A9E281CB081D60080330D /* btrees */ = {
 			isa = PBXGroup;
 			children = (
-				2A1A9E2D1CB082490080330D /* include */,
-				2A1A9E291CB082450080330D /* main.c */,
 				2A1A9E2A1CB082450080330D /* btree.c */,
+				2A7635E22816FB3F00CB15A9 /* test */,
 			);
 			name = btrees;
-			sourceTree = "<group>";
-		};
-		2A1A9E2D1CB082490080330D /* include */ = {
-			isa = PBXGroup;
-			children = (
-				2A1A9E2E1CB082520080330D /* btree.h */,
-			);
-			name = include;
 			sourceTree = "<group>";
 		};
 		2A5DD6E627F1E39700D8F740 /* fifos */ = {
@@ -339,11 +331,22 @@
 			path = queues/heaps;
 			sourceTree = SOURCE_ROOT;
 		};
+		2A7635E22816FB3F00CB15A9 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				2A7635E42816FB3F00CB15A9 /* Makefile */,
+				2A7635E32816FB3F00CB15A9 /* test_btree.c */,
+			);
+			name = test;
+			path = btrees/test;
+			sourceTree = SOURCE_ROOT;
+		};
 		2A893D3227ECAA3800F6B29F /* include */ = {
 			isa = PBXGroup;
 			children = (
 				2A893D2927ECA7A800F6B29F /* avl_tree.h */,
 				2A590BF51CF2A4ED00FA4EBC /* binary_tree.h */,
+				2A7635D62816FB0900CB15A9 /* btree.h */,
 				2A590C021CF2A52E00FA4EBC /* bcache.h */,
 				2A5DD6D927F1E37000D8F740 /* fifo.h */,
 				2A590BF61CF2A4ED00FA4EBC /* hash_table.h */,
@@ -666,8 +669,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A7635E92816FC1600CB15A9 /* test_btree.c in Sources */,
 				2A1A9E311CB0886F0080330D /* btree.c in Sources */,
-				2A1A9E321CB0886F0080330D /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -859,6 +862,7 @@
 		2A1A9E3A1CB0886F0080330D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = /Users/mholden/devel/synch/include;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -866,6 +870,7 @@
 		2A1A9E3B1CB0886F0080330D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = /Users/mholden/devel/synch/include;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

@@ -18,15 +18,15 @@ void bl_phys_dump(blk_phys_t *bp) {
     printf("bp_type %" PRIu32 " ", bp->bp_type);
 }
 
-blk_phys_t *bl_phys(block_t *b) {
+blk_phys_t *bl_phys(blk_t *b) {
     return b->bl_phys;
 }
 
-uint32_t bl_type(block_t *b) {
+uint32_t bl_type(blk_t *b) {
     return bl_phys_type(bl_phys(b));
 }
 
-void bl_dump(block_t *b) {
+void bl_dump(blk_t *b) {
     printf("bl_blkno: %llu bl_refcount: %d%s ", b->bl_blkno, b->bl_refcnt,
             (b->bl_flags & B_DIRTY) ? " B_DIRTY" : "");
     if (b->bl_bco_ops->bco_dump) {
@@ -36,11 +36,12 @@ void bl_dump(block_t *b) {
 }
 
 static void bc_dump_locked(bcache_t *bc) {
-    block_t *b;
-    block_list_t *bl;
+    blk_t *b;
+    blk_list_t *bl;
     printf("block cache @ %p: ", bc);
-    printf("bc_currsz: %" PRIu32 " ", bc->bc_currsz);
-    printf("bc_maxsz: %" PRIu32 " ", bc->bc_maxsz);
+    printf("bc_blksz: %" PRIu32 " ", bc->bc_blksz);
+    printf("bc_currsz: %" PRIu32 " (%" PRIu32 ") ", bc->bc_currsz, bc->bc_currsz / bc->bc_blksz);
+    printf("bc_maxsz: %" PRIu32 " (%" PRIu32 ") ", bc->bc_maxsz, bc->bc_maxsz / bc->bc_blksz);
     printf("bcs_hits: %" PRIu64 " ", bc->bc_stats.bcs_hits);
     printf("bcs_misses: %" PRIu64 " ", bc->bc_stats.bcs_misses);
     printf("bcs_writes: %" PRIu64 " ", bc->bc_stats.bcs_writes);
@@ -97,11 +98,11 @@ bcache_t *bc_create(char *path, uint32_t blksz, uint32_t maxsz){
     bc->bc_currsz = 0;
     bc->bc_maxsz = maxsz;
     
-    bc->bc_ht = malloc(sizeof(block_list_t) * ((bc->bc_maxsz / bc->bc_blksz) * 2));
+    bc->bc_ht = malloc(sizeof(blk_list_t) * ((bc->bc_maxsz / bc->bc_blksz) * 2));
     if (!bc->bc_ht)
         goto error_out;
     
-    memset(bc->bc_ht, 0, sizeof(block_list_t) * ((bc->bc_maxsz / bc->bc_blksz) * 2));
+    memset(bc->bc_ht, 0, sizeof(blk_list_t) * ((bc->bc_maxsz / bc->bc_blksz) * 2));
     
     TAILQ_INIT(&bc->bc_fl);
     
@@ -123,8 +124,8 @@ error_out:
 
 // TODO: synchronize this
 void bc_destroy(bcache_t *bc) {
-    block_t *b, *bnext;
-    block_list_t *bl;
+    blk_t *b, *bnext;
+    blk_list_t *bl;
     
     if (!LIST_EMPTY(&bc->bc_dl))
         printf("bc_destroy: WARNING: dirty list not empty\n");
@@ -151,8 +152,8 @@ void bc_destroy(bcache_t *bc) {
 }
 
 int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
-    block_t *b;
-    block_list_t *bl;
+    blk_t *b;
+    blk_list_t *bl;
     bool alloced_b = false;
     int err;
     
@@ -201,6 +202,16 @@ int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
         
         b->bl_blkno = blkno;
         
+        // re-init bco
+        b->bl_bco_ops->bco_destroy(b->bl_bco);
+        b->bl_bco = NULL;
+        
+        memcpy(b->bl_bco_ops, bco_ops, sizeof(bco_ops_t));
+        
+        err = b->bl_bco_ops->bco_init(&b->bl_bco, b);
+        if (err)
+            goto error_out;
+        
         // get it on the right hash list
         LIST_REMOVE(b, bl_ht_link);
         LIST_INSERT_HEAD(bl, b, bl_ht_link);
@@ -208,7 +219,7 @@ int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
         //
         // cache is not yet at max capacity. allocate a block
         //
-        b = malloc(sizeof(block_t));
+        b = malloc(sizeof(blk_t));
         if (!b) {
             printf("bc_get: failed to allocate memory for b\n");
             err = ENOMEM;
@@ -216,7 +227,7 @@ int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
         }
         alloced_b = true;
         
-        memset(b, 0, sizeof(block_t));
+        memset(b, 0, sizeof(blk_t));
         
         b->bl_rwlock = rwl_create();
         if (!b->bl_rwlock) {
@@ -249,11 +260,10 @@ int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco) {
         
         b->bl_blkno = blkno;
         
-        err = b->bl_bco_ops->bco_init(bco, b);
+        err = b->bl_bco_ops->bco_init(&b->bl_bco, b);
         if (err)
             goto error_out;
         
-        b->bl_bco = *bco;
         LIST_INSERT_HEAD(bl, b, bl_ht_link);
         TAILQ_INSERT_TAIL(&bc->bc_fl, b, bl_fl_link);
         bc->bc_currsz += bc->bc_blksz;
@@ -289,7 +299,7 @@ error_out:
     return err;
 }
 
-void bc_dirty(bcache_t *bc, block_t *b) {
+void bc_dirty(bcache_t *bc, blk_t *b) {
     lock_lock(bc->bc_lock);
     if (!(b->bl_flags & B_DIRTY)) {
         b->bl_flags |= B_DIRTY;
@@ -299,7 +309,7 @@ void bc_dirty(bcache_t *bc, block_t *b) {
     return;
 }
 
-void bc_release(bcache_t *bc, block_t *b) {
+void bc_release(bcache_t *bc, blk_t *b) {
     lock_lock(bc->bc_lock);
     assert(b->bl_refcnt > 0);
     b->bl_refcnt--;
@@ -310,10 +320,11 @@ void bc_release(bcache_t *bc, block_t *b) {
 }
 
 int bc_flush(bcache_t *bc) {
-    block_t *b, *bnext;
+    blk_t *b, *bnext;
     int err;
     
     lock_lock(bc->bc_lock);
+    
     LIST_FOREACH_SAFE(b, &bc->bc_dl, bl_dl_link, bnext) {
         assert(b->bl_flags & B_DIRTY);
         if (pwrite(bc->bc_fd, b->bl_phys, bc->bc_blksz, b->bl_blkno * bc->bc_blksz) != bc->bc_blksz) {
@@ -324,7 +335,16 @@ int bc_flush(bcache_t *bc) {
         LIST_REMOVE(b, bl_dl_link);
         bc->bc_stats.bcs_writes++;
     }
+    
+    // sync everything out
+    err = fsync(bc->bc_fd);
+    if (err) {
+        err = errno;
+        goto error_out;
+    }
+    
     bc->bc_stats.bcs_flushes++;
+    
     lock_unlock(bc->bc_lock);
     
     return 0;
@@ -335,8 +355,8 @@ error_out:
 }
 
 void bc_check(bcache_t *bc) {
-    block_t *b, *_b;
-    block_list_t *bl;
+    blk_t *b, *_b;
+    blk_list_t *bl;
     uint32_t nblocks = 0;
     bool free, dirty;
     lock_lock(bc->bc_lock);
