@@ -34,7 +34,7 @@ uint32_t tbr_phys_type(tbr_phys_t *tbrp);
 const char *tbr_phys_type_to_string(uint32_t type);
 
 int tbr_phys_compare(tbr_phys_t *tbrp1, tbr_phys_t *tbrp2);
-void tbr_phys_dump(tbr_phys_t *tbrp);
+void tbr_phys_dump(tbr_phys_t *tbrp, bool key_only);
 
 
 //

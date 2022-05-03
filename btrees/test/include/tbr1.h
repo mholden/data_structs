@@ -32,7 +32,7 @@ tbt_rec1_phys {
 } tbr1_phys_t;
 
 int tbr1_phys_compare(tbr1_phys_t *rec1, tbr1_phys_t *rec2);
-void tbr1_phys_dump(tbr1_phys_t *tbr1);
+void tbr1_phys_dump(tbr1_phys_t *tbr1, bool key_only);
 
 
 //
@@ -42,8 +42,9 @@ void tbr1_phys_dump(tbr1_phys_t *tbr1);
 typedef struct tbt_rec1 {
     tbr_t tbr1_tbr;
     rw_lock_t *tbr1_rwlock;
-    tbr1_phys_t *tbr1_phys;
 } tbr1_t;
+
+tbr1_phys_t *tbr1_phys(tbr1_t *tbr1);
 
 int tbr1_insert(btree_t *bt, tbr1_phys_t *to_insert);
 int tbr1_get(btree_t *bt, tbr1_phys_t *to_find, tbr1_t **record);

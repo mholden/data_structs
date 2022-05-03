@@ -24,15 +24,15 @@ const char *tbr_phys_type_to_string(uint32_t type) {
     }
 }
 
-void tbr_phys_dump(tbr_phys_t *tbrp) {
+void tbr_phys_dump(tbr_phys_t *tbrp, bool key_only) {
     btr_phys_dump(&tbrp->tbrp_btr);
     printf("tbrk_type %s ", tbr_phys_type_to_string(tbr_phys_type(tbrp)));
     switch (tbr_phys_type(tbrp)) {
         case TBR_PHYS_KEY_TYPE_REC0:
-            tbr0_phys_dump((tbr0_phys_t *)tbrp);
+            tbr0_phys_dump((tbr0_phys_t *)tbrp, key_only);
             break;
         case TBR_PHYS_KEY_TYPE_REC1:
-            tbr1_phys_dump((tbr1_phys_t *)tbrp);
+            tbr1_phys_dump((tbr1_phys_t *)tbrp, key_only);
             break;
         default:
             assert(0);

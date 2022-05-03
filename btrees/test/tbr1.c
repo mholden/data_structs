@@ -14,8 +14,10 @@ int tbr1_phys_compare(tbr1_phys_t *rec1, tbr1_phys_t *rec2) {
         return 0;
 }
 
-void tbr1_phys_dump(tbr1_phys_t *tbr1) {
-    printf("tbr1_id %" PRIu64 " tbr1_data %" PRIu64 " ", tbr1->tbr1_key.tbr1_id, tbr1->tbr1_val.tbr1_data);
+void tbr1_phys_dump(tbr1_phys_t *tbr1, bool key_only) {
+    printf("tbr1_id %" PRIu64 " ", tbr1->tbr1_key.tbr1_id);
+    if (!key_only)
+        printf("tbr1_data %" PRIu64 " ", tbr1->tbr1_val.tbr1_data);
 }
 
 int tbr1_init(tbr1_phys_t *tbr1p, tbr1_t **tbr1) {
@@ -35,7 +37,6 @@ int tbr1_init(tbr1_phys_t *tbr1p, tbr1_t **tbr1) {
         err = ENOMEM;
         goto error_out;
     }
-    _tbr1->tbr1_phys = tbr1p;
     
     *tbr1 = _tbr1;
     
@@ -66,6 +67,10 @@ int tbr1_build_record(uint64_t id, uint64_t data, tbr1_phys_t *record){
     return 0;
 }
 
+tbr1_phys_t *tbr1_phys(tbr1_t *tbr1) {
+    return (tbr1_phys_t *)tbr1->tbr1_tbr.tbr_phys;
+}
+
 int tbr1_insert(btree_t *bt, tbr1_phys_t *to_insert) {
     return tbr_insert(bt, (tbr_phys_t *)to_insert);
 }
@@ -75,7 +80,7 @@ int tbr1_get(btree_t *bt, tbr1_phys_t *to_find, tbr1_t **record) {
 }
 
 void tbr1_release(tbr1_t *tbr1) {
-    free(tbr1->tbr1_phys);
+    free(tbr1_phys(tbr1));
     rwl_destroy(tbr1->tbr1_rwlock);
     free(tbr1);
 }

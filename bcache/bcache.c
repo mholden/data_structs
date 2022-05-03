@@ -319,6 +319,37 @@ void bc_release(bcache_t *bc, blk_t *b) {
     return;
 }
 
+int bc_iterate(bcache_t *bc, int (*callback)(blk_t *b, void *ctx, bool *stop), void *ctx) {
+    blk_t *b;
+    blk_list_t *bl;
+    bool stop = false;
+    int err;
+    
+    lock_lock(bc->bc_lock);
+    
+    for (int i = 0; i < (bc->bc_maxsz / bc->bc_blksz) * 2; i++) {
+        bl = &bc->bc_ht[i];
+        if (!LIST_EMPTY(bl)) {
+            LIST_FOREACH(b, bl, bl_ht_link) {
+                err = callback(b, ctx, &stop);
+                if (err)
+                    goto error_out;
+                if (stop)
+                    goto out;
+            }
+        }
+    }
+    
+out:
+    lock_unlock(bc->bc_lock);
+    
+    return 0;
+    
+error_out:
+    lock_unlock(bc->bc_lock);
+    return err;
+}
+
 int bc_flush(bcache_t *bc) {
     blk_t *b, *bnext;
     int err;

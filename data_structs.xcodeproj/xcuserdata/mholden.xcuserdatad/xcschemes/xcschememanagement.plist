@@ -17,7 +17,7 @@
 		<key>avl_trees.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>4</integer>
+			<integer>8</integer>
 		</dict>
 		<key>binary_trees copy.xcscheme_^#shared#^_</key>
 		<dict>
@@ -27,7 +27,7 @@
 		<key>binary_trees.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>7</integer>
+			<integer>4</integer>
 		</dict>
 		<key>cache copy.xcscheme_^#shared#^_</key>
 		<dict>
@@ -47,7 +47,7 @@
 		<key>hash_tables.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>8</integer>
+			<integer>7</integer>
 		</dict>
 		<key>heap copy.xcscheme_^#shared#^_</key>
 		<dict>

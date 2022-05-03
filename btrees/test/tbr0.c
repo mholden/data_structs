@@ -14,16 +14,18 @@ int tbr0_phys_compare(tbr0_phys_t *rec1, tbr0_phys_t *rec2) {
     return strcmp(kstr1, kstr2);
 }
 
-void tbr0_phys_dump(tbr0_phys_t *tbr0) {
+void tbr0_phys_dump(tbr0_phys_t *tbr0, bool key_only) {
     char *kstr, *vstr;
     tbr0_val_phys_t *tbr0_val;
     
     kstr = (char *)((uint8_t *)&tbr0->tbr0_key + sizeof(tbr0_key_phys_t));
+    printf("tbr0_kstrlen %" PRIu16 " tbr0_kstr \"%s\" ", tbr0->tbr0_key.tbr0_kstrlen, kstr);
     
-    tbr0_val = (tbr0_val_phys_t *)((uint8_t *)&tbr0->tbr0_key + sizeof(tbr0_key_phys_t) + tbr0->tbr0_key.tbr0_kstrlen);
-    vstr = (char *)((uint8_t *)tbr0_val + sizeof(tbr0_val_phys_t));
-    
-    printf("tbr0_kstrlen %" PRIu16 " tbr0_kstr \"%s\" tbr0_vstrlen %" PRIu16 " tbr0_vstr \"%s\" ", tbr0->tbr0_key.tbr0_kstrlen, kstr, tbr0_val->tbr0_vstrlen, vstr);
+    if (!key_only) {
+        tbr0_val = (tbr0_val_phys_t *)((uint8_t *)&tbr0->tbr0_key + sizeof(tbr0_key_phys_t) + tbr0->tbr0_key.tbr0_kstrlen);
+        vstr = (char *)((uint8_t *)tbr0_val + sizeof(tbr0_val_phys_t));
+        printf("tbr0_vstrlen %" PRIu16 " tbr0_vstr \"%s\" ", tbr0_val->tbr0_vstrlen, vstr);
+    }
 }
 
 int tbr0_build_record(const char *kstr, const char *vstr, tbr0_phys_t **record){
@@ -65,6 +67,10 @@ error_out:
     return err;
 }
 
+tbr0_phys_t *tbr0_phys(tbr0_t *tbr0) {
+    return (tbr0_phys_t *)tbr0->tbr0_tbr.tbr_phys;
+}
+
 int tbr0_init(tbr0_phys_t *tbr0p, tbr0_t **tbr0) {
     tbr0_t *_tbr0 = NULL;
     int err;
@@ -82,7 +88,6 @@ int tbr0_init(tbr0_phys_t *tbr0p, tbr0_t **tbr0) {
         err = ENOMEM;
         goto error_out;
     }
-    _tbr0->tbr0_phys = tbr0p;
     _tbr0->tbr0_key = &tbr0p->tbr0_key;
     _tbr0->tbr0_val = (tbr0_val_phys_t *)((uint8_t *)_tbr0->tbr0_key + sizeof(tbr0_key_phys_t) + _tbr0->tbr0_key->tbr0_kstrlen);
     
@@ -109,7 +114,7 @@ int tbr0_get(btree_t *bt, tbr0_phys_t *to_find, tbr0_t **record) {
 }
 
 void tbr0_release(tbr0_t *tbr0) {
-    free(tbr0->tbr0_phys);
+    free(tbr0_phys(tbr0));
     rwl_destroy(tbr0->tbr0_rwlock);
     free(tbr0);
 }

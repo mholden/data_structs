@@ -91,6 +91,8 @@ int bc_get(bcache_t *bc, uint64_t blkno, bco_ops_t *bco_ops, void **bco);
 void bc_dirty(bcache_t *bc, blk_t *b);
 void bc_release(bcache_t *bc, blk_t *b);
 
+int bc_iterate(bcache_t *bc, int (*callback)(blk_t *b, void *ctx, bool *stop), void *ctx);
+
 int bc_flush(bcache_t *bc);
 
 void bc_dump(bcache_t *bc);
