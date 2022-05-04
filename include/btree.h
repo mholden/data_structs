@@ -116,14 +116,14 @@ int bt_remove(btree_t *bt, btr_phys_t *to_remove);
 int bt_iterate(btree_t *bt, int (*node_callback)(btn_phys_t *node, void *ctx, bool *stop), void *node_ctx, int (*record_callback)(btr_phys_t *record, void *ctx, bool *stop), void *record_ctx);
 int bt_iterate_disk(const char *path, int (*node_callback)(btn_phys_t *node, void *ctx, bool *stop), void *node_ctx, int (*record_callback)(btr_phys_t *record, void *ctx, bool *stop), void *record_ctx);
 
-uint16_t bt_max_inline_record_size(btree_t *bt);
-
 void bt_dump(btree_t *bt);
 void bt_dump_locked(btree_t *bt);
 int bt_dump_disk(const char *path);
 
 void bt_check(btree_t *bt);
 int bt_check_disk(const char *path);
+
+uint16_t bt_max_inline_record_size(btree_t *bt);
 
 #define ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 #define ROUND_DOWN(N, S) ((N / S) * S)
@@ -132,18 +132,29 @@ void btr_phys_dump(btr_phys_t *btrp);
 uint16_t btr_phys_size(btr_phys_t *btrp);
 btr_phys_t *btr_phys_next_record(btr_phys_t *btrp);
 int btr_phys_build_index_record(btr_phys_t *btrp, uint64_t blkno, btr_phys_t **index_record);
+uint64_t btr_phys_index_ptr(btr_phys_t *btrp);
 
 bool btn_phys_is_leaf(btn_phys_t *btnp);
 bool btn_phys_is_root(btn_phys_t *btnp);
 int btn_phys_iterate_records(btn_phys_t *btnp, int (*callback)(btr_phys_t *btr, void *ctx, bool *stop), void *ctx);
 btr_phys_t *btn_phys_first_record(btn_phys_t *btnp);
 
+typedef struct btn_split_info {
+    btr_phys_t *bsi_split_index1;
+    btr_phys_t *bsi_split_index2;
+    bt_info_phys_t bsi_bip;
+    uint16_t *bsi_reserved;
+} btn_split_info_t;
+
 blk_t *btn_block(btn_t *btn);
 btn_phys_t *btn_phys(btn_t *btn);
 void btn_dump_phys(btn_t *btn);
+void btn_dump_phys_record(btn_t *btn, btr_phys_t *btrp);
 bool btn_is_leaf(btn_t *btn);
 bool btn_is_root(btn_t *btn);
-int btn_split(btn_t *btn, btn_t **new_btn);
+int btn_insert(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi);
+int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi);
 int btn_insert_first_index_record(btn_t *btn, uint64_t ptr, btr_phys_t *to_insert);
+bt_info_phys_t *btn_root_info(btn_t *btn);
 
 #endif // _BTREE_H_

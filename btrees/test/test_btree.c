@@ -64,16 +64,54 @@ static void tbt_dump_disk(const char *path) {
     bt_iterate_disk(path, NULL, NULL, _tbt_dump_record_cb, NULL);
 }
 
-static void test_node_splitting_random(void) {
+static int _tbt_check_record_cb(btr_phys_t *btr, void *ctx, bool *stop) {
+    tbr_phys_t **curr, *next;
+    uint16_t recsz;
+    int err;
+    
+    curr = (tbr_phys_t **)ctx;
+    next = (tbr_phys_t *)btr;
+    
+    if (*curr) {
+        if (tbt_compare((btr_phys_t *)next, (btr_phys_t *)*curr) < 0) {
+            err = EILSEQ;
+            goto error_out;
+        }
+        free(*curr);
+    }
+    
+    recsz = btr_phys_size((btr_phys_t *)next);
+    *curr = malloc(recsz);
+    if (!*curr) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    memcpy(*curr, next, recsz);
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
+static int tbt_check_disk(const char *path) {
+    tbr_phys_t *curr = NULL;
+    return bt_iterate_disk(path, NULL, NULL, _tbt_check_record_cb, (void *)&curr);
+}
+
+// just do inserts
+static void test_node_splitting_random(int nops) {
     btree_t *bt;
-    tbr0_phys_t **tbr0_recs;
-    uint8_t tbr0_kstr[sizeof(uint64_t) + 1], tbr0_vstr[sizeof(uint64_t) + 1];
-    tbr1_phys_t *tbr1_recs;
+    tbr0_t *tbr0;
+    tbr0_phys_t **tbr0_recs, **tbr0_search_recs, *tbr0p_found;
+    uint8_t tbr0_kstr[sizeof(uint64_t) + 1], tbr0_vstr[sizeof(uint64_t) + 1], *k, *v;
+    tbr1_t *tbr1;
+    tbr1_phys_t *tbr1_recs, *tbr1_search_recs;
     char *fname, *tname = "test_node_splitting_random";
     uint64_t rndk, rndv;
-    size_t n = BT_PHYS_BLKSZ /** 16*/;
+    size_t n = nops;
     
-    printf("%s\n", tname);
+    printf("%s (n %llu)\n", tname, n);
     
     assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
     sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
@@ -112,21 +150,82 @@ static void test_node_splitting_random(void) {
         }
         //bt_dump(bt);
         //tbt_dump(bt);
+        //bt_check(bt);
+    }
+    
+    // make sure we can find everything:
+    
+    assert(tbr0_search_recs = malloc(sizeof(tbr0_phys_t *) * n));
+    memset(tbr0_search_recs, 0, sizeof(tbr0_phys_t *) * n);
+    
+    assert(tbr1_search_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_search_recs, 0, sizeof(tbr1_phys_t) * n);
+    
+    for (int i = 0; i < n; i++) {
+        if (tbr0_recs[i]) {
+            assert(tbr0_build_record((uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t), NULL, &tbr0_search_recs[i]) == 0);
+            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
+            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
+            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+            tbr0_release(tbr0);
+        } else {
+            assert(tbr1_build_record(tbr1_recs[i].tbr1_key.tbr1_id, 0, &tbr1_search_recs[i]) == 0);
+            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
+            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
+                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
+            tbr1_release(tbr1);
+        }
+        //bt_check(bt);
     }
     
     // close the btree:
     assert(bt_close(bt) == 0);
     bt = NULL;
     
-    bt_dump_disk(fname);
-    tbt_dump_disk(fname);
+    //bt_dump_disk(fname);
+    //tbt_dump_disk(fname);
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    
+    // re-open and check we can find everything again
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    for (int i = 0; i < n; i++) {
+        if (tbr0_recs[i]) {
+            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
+            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
+            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+            tbr0_release(tbr0);
+        } else {
+            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
+            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
+                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
+            tbr1_release(tbr1);
+        }
+        //bt_check(bt);
+    }
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
     
     assert(bt_destroy(fname) == 0);
     
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         free(tbr0_recs[i]);
+        free(tbr0_search_recs[i]);
+    }
     free(tbr0_recs);
     free(tbr1_recs);
+    free(tbr1_search_recs);
     free(fname);
 }
 
@@ -228,6 +327,7 @@ static void test_specific_case1(void) {
     bt = NULL;
     
     assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
     
     assert(bt_destroy(fname) == 0);
     
@@ -301,6 +401,7 @@ static void test_node_splitting_1(void) {
     
     assert(bt_check_disk(fname) == 0);
     //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
     //tbt_dump_disk(fname);
     
     assert(bt_destroy(fname) == 0);
@@ -374,6 +475,7 @@ static void test_node_splitting_2(void) {
     
     assert(bt_check_disk(fname) == 0);
     //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
     //tbt_dump_disk(fname);
     
     assert(bt_destroy(fname) == 0);
@@ -473,6 +575,7 @@ static void test_node_splitting_3(void) {
     
     assert(bt_check_disk(fname) == 0);
     //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
     //tbt_dump_disk(fname);
     
     assert(bt_destroy(fname) == 0);
@@ -579,6 +682,7 @@ static void test_node_splitting_4(void) {
     
     assert(bt_check_disk(fname) == 0);
     //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
     //tbt_dump_disk(fname);
     
     assert(bt_destroy(fname) == 0);
@@ -689,6 +793,7 @@ static void test_node_splitting_5(void) {
     
     assert(bt_check_disk(fname) == 0);
     //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
     //tbt_dump_disk(fname);
     
     assert(bt_destroy(fname) == 0);
@@ -704,25 +809,134 @@ static void test_node_splitting_5(void) {
     free(fname);
 }
 
-static void test_node_splitting(void) {
+//
+// same as test_node_splitting_4 but insertion point
+// will == split_point here (see bt_insert) because
+// we'll insert the large record into the left half of
+// the node
+//
+static void test_node_splitting_6(void) {
+    btree_t *bt;
+    tbr0_t *tbr0;
+    tbr0_phys_t **tbr0_recs, **tbr0_search_recs, *tbr0p;
+    uint8_t tbr0_str[9], data, *big_str, *k, *v;
+    char *fname, *tname = "test_node_splitting_6";
+    size_t recsz, n, strsz;
+    
+    printf("%s\n", tname);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    recsz = sizeof(tbr0_phys_t) + (2 * sizeof(tbr0_str));
+    n = bt_max_inline_record_size(bt) / recsz;
+    
+    //printf("inserting %llu recs\n", n);
+    
+    assert(tbr0_recs = malloc(sizeof(tbr0_phys_t *) * (n + 1)));
+    memset(tbr0_recs, 0, sizeof(tbr0_phys_t *) * (n + 1));
+
+    memset(tbr0_str, 0, sizeof(tbr0_str));
+    data = 33;
+    for (int i = 0; i < n + 1; i++) {
+        if (i == (n * 1 / 4)) { // skip this one
+            data++;
+            continue;
+        }
+        memset(tbr0_str, data, sizeof(tbr0_str) - 1);
+        assert(tbr0_build_record(tbr0_str, tbr0_str, &tbr0_recs[i]) == 0);
+        assert(tbr0_insert(bt, tbr0_recs[i]) == 0);
+        data++;
+        bt_check(bt);
+        //bt_dump(bt);
+        //tbt_dump(bt);
+    }
+    
+    // now build a large record
+    recsz = bt_max_inline_record_size(bt);
+    strsz = (recsz - sizeof(tbr0_phys_t)) / 2;
+    assert(big_str = malloc(strsz));
+    memset(big_str, 0, strsz);
+    data = 33 + (n * 1 / 4);
+    memset(big_str, data, strsz - 1);
+    
+    // trigger the split:
+    assert(tbr0_build_record(big_str, big_str, &tbr0_recs[n * 1 / 4]) == 0);
+    assert(tbr0_insert(bt, tbr0_recs[n * 1 / 4]) == 0);
+    bt_check(bt);
+    //bt_dump(bt);
+    
+    // make sure we can find everything
+    assert(tbr0_search_recs = malloc(sizeof(tbr0_phys_t *) * (n + 1)));
+    memset(tbr0_search_recs, 0, sizeof(tbr0_phys_t *) * (n + 1));
+    data = 33;
+    for (int i = 0; i < n + 1; i++) {
+        memset(tbr0_str, data, sizeof(tbr0_str) - 1);
+        if (i == (n * 1 / 4))
+            assert(tbr0_build_record(big_str, NULL, &tbr0_search_recs[i]) == 0);
+        else
+            assert(tbr0_build_record(tbr0_str, NULL, &tbr0_search_recs[i]) == 0);
+        assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
+        tbr0p = tbr0_phys(tbr0);
+        k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
+        v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+        assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+        tbr0_release(tbr0);
+        data++;
+    }
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    //tbt_dump_disk(fname);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    free(big_str);
+    for (int i = 0; i < n + 1; i++) {
+        free(tbr0_search_recs[i]);
+        free(tbr0_recs[i]);
+    }
+    free(tbr0_search_recs);
+    free(tbr0_recs);
+    free(fname);
+}
+
+static void test_specific_cases_node_splitting(void) {
     test_node_splitting_1();
     test_node_splitting_2();
     test_node_splitting_3();
     test_node_splitting_4();
     test_node_splitting_5();
-    //test_node_splitting_random();
+    test_node_splitting_6();
 }
 
 static void test_specific_cases(void) {
     test_specific_case1();
-    test_node_splitting();
+    test_specific_cases_node_splitting();
 }
 
-#define DEFAULT_NUM_ELEMENTS (1 << 10)
+static void test_random_cases(int nops) {
+    test_node_splitting_random(nops);
+}
+
+#define DEFAULT_NUM_OPS (1 << 10)
 
 int main(int argc, char **argv) {
     unsigned int seed = 0;
-    int ch, num_elements = DEFAULT_NUM_ELEMENTS;
+    int ch, num_ops = DEFAULT_NUM_OPS;
     
     struct option longopts[] = {
         { "num",    required_argument,   NULL,   'n' },
@@ -733,7 +947,7 @@ int main(int argc, char **argv) {
     while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
         switch (ch) {
             case 'n':
-                num_elements = (int)strtol(optarg, NULL, 10);
+                num_ops = (int)strtol(optarg, NULL, 10);
                 break;
             case 's':
                 seed = (unsigned int)strtol(optarg, NULL, 10);
@@ -756,6 +970,7 @@ int main(int argc, char **argv) {
     assert(mkdir(TEST_BTREE_DIR, S_IRWXU) == 0 || (errno == EEXIST));
     
     test_specific_cases();
+    test_random_cases(num_ops);
     
     return 0;
 }

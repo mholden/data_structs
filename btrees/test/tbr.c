@@ -25,7 +25,7 @@ const char *tbr_phys_type_to_string(uint32_t type) {
 }
 
 void tbr_phys_dump(tbr_phys_t *tbrp, bool key_only) {
-    btr_phys_dump(&tbrp->tbrp_btr);
+    //btr_phys_dump(&tbrp->tbrp_btr);
     printf("tbrk_type %s ", tbr_phys_type_to_string(tbr_phys_type(tbrp)));
     switch (tbr_phys_type(tbrp)) {
         case TBR_PHYS_KEY_TYPE_REC0:

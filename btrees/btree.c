@@ -25,6 +25,11 @@ static const char *bt_bp_type_to_string(uint32_t bp_type) {
     }
 }
 
+static void bt_dump_index_record(btree_t *bt, btr_phys_t *btrp) {
+    btr_phys_dump(btrp);
+    bt->bt_ops->bto_dump_record_fn(btrp, true);
+    printf("index_ptr %" PRIu64 " ", btr_phys_index_ptr(btrp));
+}
 
 //
 // bitmap-related functions:
@@ -437,6 +442,19 @@ uint64_t btn_first_index_record_ptr(btn_t *btn) {
     return btn_phys_first_index_record_ptr(btn_phys(btn));
 }
 
+void btn_dump_phys_record(btn_t *btn, btr_phys_t *btrp) {
+    btree_t *bt = btn->btn_bt;
+    btr_phys_dump(btrp);
+    if (btn_is_leaf(btn)) {
+        if (bt->bt_ops->bto_dump_record_fn)
+            bt->bt_ops->bto_dump_record_fn(btrp, false);
+    } else { // index
+        if (bt->bt_ops->bto_dump_record_fn)
+            bt->bt_ops->bto_dump_record_fn(btrp, true);
+        printf("index_ptr %" PRIu64 " ", btr_phys_index_ptr(btrp));
+    }
+}
+
 void btn_dump_phys(btn_t *btn) {
     btree_t *bt = btn->btn_bt;
     sm_t *sm = bt->bt_sm;
@@ -462,15 +480,9 @@ void btn_dump_phys(btn_t *btn) {
         printf("\n    [-1]: btrp_ptr %" PRIu64 " ", *(uint64_t *)((uint8_t *)btrp - sizeof(uint64_t)));
     for (int i = 0; i < btnp->btnp_nrecords; i++) {
         printf("\n    [%d]: %p ", i, btrp);
-        btr_phys_dump(btrp);
-        if (btn_is_leaf(btn)) {
-            if (bt->bt_ops->bto_dump_record_fn)
-                bt->bt_ops->bto_dump_record_fn(btrp, false);
-        } else { // index
-            if (bt->bt_ops->bto_dump_record_fn)
-                bt->bt_ops->bto_dump_record_fn(btrp, true);
-            printf("btrp_ptr %" PRIu64 " ", *(uint64_t *)((uint8_t *)btrp + sizeof(btr_phys_t) + btrp->btrp_ksz));
-        }
+        btn_dump_phys_record(btn, btrp);
+        //if (btn_is_leaf(btn) && i == 0)
+        //    break; // just dump the first recod for leaves
         btrp = btr_phys_next_record(btrp);
     }
 #endif
@@ -483,13 +495,6 @@ bool btn_is_leaf(btn_t *btn) {
 bool btn_is_root(btn_t *btn) {
     return btn_phys_is_root(btn_phys(btn));
 }
-
-typedef struct btn_split_info {
-    btr_phys_t *bsi_split_index1;
-    btr_phys_t *bsi_split_index2;
-    bt_info_phys_t bsi_bip;
-    uint16_t *bsi_reserved;
-} btn_split_info_t;
 
 static bool bsi_did_split(btn_split_info_t *bsi) {
     return (bsi->bsi_split_index1 != NULL);
@@ -628,7 +633,7 @@ error_out:
     return err;
 }
 
-int btn_insert_record(btn_t *btn, btr_phys_t *to_insert) {
+int btn_insert(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
     btree_t *bt = btn->btn_bt;
     bcache_t *bc = bt->bt_bc;
     btn_phys_t *btnp = btn_phys(btn);
@@ -644,11 +649,14 @@ int btn_insert_record(btn_t *btn, btr_phys_t *to_insert) {
     }
         
     recsz = btr_phys_size(to_insert);
-    if (recsz > btnp->btnp_freespace) {
-        err = ENOSPC;
-        goto error_out;
+    if (recsz > btnp->btnp_freespace) { // we need to split
+        err = btn_insert_split(btn, to_insert, bsi);
+        if (err)
+            goto error_out;
+        goto out;
     }
     
+    // we don't need to split. just insert into our array of records
     btrp = btn_phys_first_record(btnp);
     tailsz = 0;
     for (int i = 0; i < btnp->btnp_nrecords; i++) {
@@ -718,9 +726,8 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
     uint16_t blksz = sm_phys(sm)->smp_bsz;
     uint64_t blkno = 0;
     bcache_t *bc =bt->bt_bc;
-    btn_t *nbtn1 = NULL;
-    bool need_nbtn2 = false;
-    btn_phys_t *btnp = btn_phys(btn), *orig_btnp = NULL, *nbtnp1, *nbtnp2;
+    btn_t *nbtn = NULL;
+    btn_phys_t *btnp = btn_phys(btn), *orig_btnp = NULL, *nbtnp;
     btr_phys_t *split_point = NULL, *insertion_point = NULL, *index_rec, *btrp, *_btrp, *tailrecs;
     uint16_t split_ind = -1, insertion_ind = -1, headsz = 0, tailsz = 0, itailsz, movesz, nrecsz, maxsz, ntailrecs = 0;
     uint32_t ba_flags = 0;
@@ -728,14 +735,8 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
     bt_info_phys_t *bip;
     int comp, err;
     
-    // allocate new block
-    // figure out where both insertion should be and where split should be. split should always be after the first record that takes us over max_inline space / 2
-    // if insertion point is after split point, we may need third node if tailsize + recsz > max inline record size
-        // if we need a third node, make split point = insertion point and recalculate tail size
-        // if it's still the case that we need third node, calculate new split point with new tail, and then insert records accordingly
-    
     nrecsz = btr_phys_size(to_insert);
-    assert(nrecsz > btnp->btnp_freespace); // don't call this unless we need to
+    assert(nrecsz > btnp->btnp_freespace);
     
 #if 0
     printf("bt_insert_split (max bt_max_inline_record_size %u) (nrecsz %u):\n", bt_max_inline_record_size(bt), nrecsz);
@@ -766,11 +767,12 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
         ba_flags |= BTN_PHYS_FLG_IS_LEAF;
     
     // assert(*bsi.reserved);
-    // err = btn_alloc(bt, ba_flags, SMBA_RESERVED, &nbtn1);
+    // err = btn_alloc(bt, ba_flags, SMBA_RESERVED, &nbtn);
     // *bsi.reserved--;
-    err = btn_alloc(bt, ba_flags, &nbtn1);
+    err = btn_alloc(bt, ba_flags, &nbtn);
     if (err)
         goto error_out;
+    nbtnp = btn_phys(nbtn);
     
     //
     // find our split and insertion points:
@@ -787,6 +789,8 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
                 tailsz += btr_phys_size(_btrp);
                 _btrp = btr_phys_next_record(_btrp);
             }
+            if (!insertion_point) // to_insert will be in the tail
+                tailsz += nrecsz;
         }
         if (!insertion_point) {
             comp = bt->bt_ops->bto_compare_fn(to_insert, btrp);
@@ -806,11 +810,12 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
                 if (!split_point && (headsz >= maxsz / 2)) {
                     split_point = btrp;
                     split_ind = i;
-                    tailsz = itailsz - nrecsz;
+                    tailsz = itailsz;
                 }
             }
         }
-        headsz += btr_phys_size(btrp);
+        if (!split_point)
+            headsz += btr_phys_size(btrp);
         btrp = btr_phys_next_record(btrp);
     }
     
@@ -826,31 +831,18 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
         btnp->btnp_freespace += sizeof(bt_info_phys_t);
     }
     
-    if ((tailsz + nrecsz > maxsz) &&
-            (insertion_point >= split_point)) { // we might need a third node
+    // note: !insertion_point implies to_insert is > all records in btn
+    if ((!insertion_point || insertion_point >= split_point) && (tailsz > maxsz)) { // we might need a third node
         assert(nrecsz > (maxsz / 2)); // this must be the case. to_insert is large
         assert((headsz + nrecsz) > maxsz);
-        if (itailsz > maxsz) {
-            //
-            // insert everything from insertion point onwards into new
-            // node (nbtn). insert to_insert into btn if it will fit,
-            // otherwise into nbtn
-            //
-            split_point = insertion_point;
-            split_ind = insertion_ind;
-            tailsz = itailsz - nrecsz;
-            if (nrecsz > (btnp->btnp_freespace + tailsz)) // we'll need a third node
-                need_nbtn2 = true;
-        } else {
-            //
-            // if we just insert records from insertion point
-            // onwards into new node, we won't need a third
-            // node. so let's do that
-            //
-            split_point = insertion_point;
-            split_ind = insertion_ind;
-            tailsz = itailsz - nrecsz;
-        }
+        //
+        // if we just insert records from insertion point
+        // onwards into new node, we might not need a third
+        // node. so let's try that
+        //
+        split_point = insertion_point;
+        split_ind = insertion_ind;
+        tailsz = itailsz;
     }
     
     tailrecs = split_point;
@@ -862,51 +854,48 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
     
     if (tailrecs) {
         // move the tail records to our new node
-        nbtnp1 = btn_phys(nbtn1);
-        memcpy(btn_phys_first_record(nbtnp1), tailrecs, tailsz);
+        movesz = tailsz;
+        if (!insertion_point || (insertion_point >= split_point))
+            movesz -= nrecsz;
+        memcpy(btn_first_record(nbtn), tailrecs, movesz);
         btnp->btnp_nrecords -= ntailrecs;
-        nbtnp1->btnp_nrecords += ntailrecs;
-        btnp->btnp_freespace += tailsz;
-        nbtnp1->btnp_freespace -= tailsz;
+        nbtnp->btnp_nrecords += ntailrecs;
+        btnp->btnp_freespace += movesz;
+        nbtnp->btnp_freespace -= movesz;
+        if (!btn_is_leaf(nbtn))
+            nbtnp->btnp_freespace -= sizeof(uint64_t); // for the first index pointer
         bc_dirty(bc, btn_block(btn));
-        bc_dirty(bc, btn_block(nbtn1));
+        bc_dirty(bc, btn_block(nbtn));
         
 #if 0
         printf(" node post move: ");
         btn_dump_phys(btn);
         printf("\n");
         printf(" new node: ");
-        btn_dump_phys(nbtn1);
+        btn_dump_phys(nbtn);
         printf("\n");
 #endif
     }
     
-    if (need_nbtn2) {
-        //
-        // to_insert goes into our new btree node and we'll need to split it
-        //
-        printf("");
-        memset(&rbsi, 0, sizeof(btn_split_info_t));
-        //rbsi.reserved = bsi.reserved;
-        
-        err = btn_insert_split(nbtn1, to_insert, &rbsi);
+    memset(&rbsi, 0, sizeof(btn_split_info_t));
+    if ((insertion_point && insertion_point < split_point) ||
+            (tailsz > maxsz && nrecsz <= btnp->btnp_freespace)) { // to_insert goes into our original btree node
+        err = btn_insert(btn, to_insert, &rbsi);
         if (err)
             goto error_out;
-        
-        assert(rbsi.bsi_split_index1 && !rbsi.bsi_split_index2 && !rbsi.bsi_bip.bti_nnodes);
-        _bsi.bsi_split_index2 = rbsi.bsi_split_index1;
-    } else if ((insertion_point > split_point) ||
-                (insertion_point == split_point && nrecsz > btnp->btnp_freespace)) {
-        //
-        // to_insert goes into our new btree node. no need to split
-        //
-        err = btn_insert_record(nbtn1, to_insert);
+        assert(!bsi_did_split(&rbsi));
+    } else { // to_insert goes into our new btree node
+        err = btn_insert(nbtn, to_insert, &rbsi);
         if (err)
             goto error_out;
-    } else { // to_insert goes into our original btree node
-        err = btn_insert_record(btn, to_insert);
-        if (err)
-            goto error_out;
+        if (bsi_did_split(&rbsi)) { // it might have split
+            // this should have been the case:
+            assert(tailsz > maxsz && nrecsz > btnp->btnp_freespace);
+            // shouldn't ever require 3 nodes for this split, and shouldn't be a root split:
+            assert(rbsi.bsi_split_index1 && !rbsi.bsi_split_index2 && !rbsi.bsi_bip.bti_nnodes);
+            // pass it back up to the caller via bsi_split_index2
+            _bsi.bsi_split_index2 = rbsi.bsi_split_index1;
+        }
     }
     
 #if 0
@@ -914,17 +903,17 @@ int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
     btn_dump_phys(btn);
     printf("\n");
     printf(" new node post insert: ");
-    btn_dump_phys(nbtn1);
+    btn_dump_phys(nbtn);
     printf("\n");
 #endif
     
     // build the index record to return up to the caller
-    index_rec = btn_first_record(nbtn1);
-    err = btr_phys_build_index_record(index_rec, btn_block(nbtn1)->bl_blkno, &_bsi.bsi_split_index1);
+    index_rec = btn_first_record(nbtn);
+    err = btr_phys_build_index_record(index_rec, btn_block(nbtn)->bl_blkno, &_bsi.bsi_split_index1);
     if (err)
         goto error_out;
     
-    bc_release(bc, btn_block(nbtn1));
+    bc_release(bc, btn_block(nbtn));
     
     *bsi = _bsi;
     
@@ -937,10 +926,19 @@ error_out:
         free(orig_btnp);
     if (blkno)
         sm_bfree(sm, blkno);
-    if (nbtn1)
-        bc_release(bc, btn_block(nbtn1));
+    if (nbtn)
+        bc_release(bc, btn_block(nbtn));
     
     return err;
+}
+
+bt_info_phys_t *btn_root_info(btn_t *btn) {
+    btree_t *bt = btn->btn_bt;
+    sm_t *sm = bt->bt_sm;
+    sm_phys_t *smp = sm_phys(sm);
+    btn_phys_t *btnp = btn_phys(btn);
+    assert(btn_is_root(btn));
+    return (bt_info_phys_t *)((uint8_t *)btnp + smp->smp_bsz - sizeof(bt_info_phys_t));
 }
 
 
@@ -949,7 +947,7 @@ error_out:
 //
 
 void btr_phys_dump(btr_phys_t *btrp) {
-    printf("btrp_ksz %" PRIu16 " btrp_vsz %" PRIu16 " ", btrp->btrp_ksz, btrp->btrp_vsz);
+    printf("btrp_sz %" PRIu16 " btrp_ksz %" PRIu16 " btrp_vsz %" PRIu16 " ", btr_phys_size(btrp), btrp->btrp_ksz, btrp->btrp_vsz);
 }
 
 uint16_t btr_phys_size(btr_phys_t *btrp) {
@@ -1200,6 +1198,7 @@ int bt_open(const char *path, bt_ops_t *ops, btree_t **bt) {
     btree_t *_bt = NULL;
     uint8_t *buf = NULL;
     sm_phys_t *smp;
+    uint64_t rblkno;
     ssize_t pret;
     int fd = -1, err;
     
@@ -1222,6 +1221,7 @@ int bt_open(const char *path, bt_ops_t *ops, btree_t **bt) {
     }
     
     smp = (sm_phys_t *)buf;
+    rblkno = smp->smp_rblkno;
     
     _bt = malloc(sizeof(btree_t));
     if (!_bt) {
@@ -1257,7 +1257,7 @@ int bt_open(const char *path, bt_ops_t *ops, btree_t **bt) {
     if (err)
         goto error_out;
     
-    err = btn_get(_bt, BT_PHYS_BT_OFFSET, 0, 0, &_bt->bt_root);
+    err = btn_get(_bt, rblkno, 0, 0, &_bt->bt_root);
     if (err)
         goto error_out;
     
@@ -1338,24 +1338,112 @@ error_out:
 }
 
 int _bt_insert(btree_t *bt, btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi) {
+    bcache_t *bc = bt->bt_bc;
     btn_phys_t *btnp = btn_phys(btn);
-    int err;
+    btn_t *sbtn = NULL;
+    btr_phys_t *btrp;
+    uint64_t index_ptr, sblkno;
+    btn_t *child = NULL;
+    btn_split_info_t cbsi, ibsi, isbsi;
+    bt_info_phys_t *bip;
+    int comp, err;
     
     if (btn_is_leaf(btn)) {
-        if (btr_phys_size(to_insert) > btnp->btnp_freespace) { // we need to split this node
-            err = btn_insert_split(btn, to_insert, bsi);
-        } else { // don't need to split. just insert the record
-            err = btn_insert_record(btn, to_insert);
-        }
+        err = btn_insert(btn, to_insert, bsi);
         if (err)
             goto error_out;
     } else { // index node
-        assert(0);
+        btrp = btn_first_record(btn);
+        index_ptr = btn_first_index_record_ptr(btn);
+        for (int i = 0; i < btnp->btnp_nrecords; i++) {
+            comp = bt->bt_ops->bto_compare_fn(to_insert, btrp);
+            if (comp < 0)
+                break;
+            index_ptr = btr_phys_index_ptr(btrp);
+            btrp = btr_phys_next_record(btrp);
+        }
+        //
+        // i don't think it's possible for index_ptr to be 0 here,
+        // even though it is possible for btn_first_index_record_ptr
+        // to be 0.
+        // TODO: prove this with a test case
+        //
+        assert(index_ptr);
+        
+        // get the child node
+        err = btn_get(bt, index_ptr, 0, 0, &child);
+        if (err)
+            goto error_out;
+        
+        // recurse
+        memset(&cbsi, 0, sizeof(btn_split_info_t));
+        err = _bt_insert(bt, child, to_insert, &cbsi);
+        if (err)
+            goto error_out;
+        
+        if (bsi_did_split(&cbsi)) { // our child split
+            bip = btn_root_info(bt->bt_root);
+            bip->bti_nnodes++;
+            
+            // insert the index passed up to us from our child
+            memset(&ibsi, 0, sizeof(btn_split_info_t));
+            err = btn_insert(btn, cbsi.bsi_split_index1, &ibsi);
+            assert(!err);
+            
+            if (cbsi.bsi_split_index2) {
+                //
+                // child split into 3 nodes, so we have another index to insert
+                //
+                assert(!cbsi.bsi_split_index2); // TODO: support this. the below code should work?
+                bip->bti_nnodes++;
+                if (bsi_did_split(&ibsi)) {
+                    //
+                    // we split above when we inserted the first record, so now we
+                    // have multiple nodes and need to determine which node to insert
+                    // this second record into
+                    //
+                    comp = bt->bt_ops->bto_compare_fn(cbsi.bsi_split_index2, ibsi.bsi_split_index1);
+                    if (comp >= 0) { // we need to insert into one of our split nodes
+                        if (ibsi.bsi_split_index2) {
+                            comp = bt->bt_ops->bto_compare_fn(cbsi.bsi_split_index2, ibsi.bsi_split_index2);
+                            if (comp < 0)
+                                sblkno = btr_phys_index_ptr(ibsi.bsi_split_index2);
+                            else
+                                sblkno = btr_phys_index_ptr(ibsi.bsi_split_index1);
+                        } else {
+                            sblkno = btr_phys_index_ptr(ibsi.bsi_split_index1);
+                        }
+                        err = btn_get(bt, sblkno, 0, 0, &sbtn);
+                        assert(!err);
+                    }
+                }
+                
+                memset(&isbsi, 0, sizeof(btn_split_info_t));
+                err = btn_insert(sbtn ? sbtn : btn, cbsi.bsi_split_index2, &isbsi);
+                assert(!err);
+                
+                assert(!bsi_did_split(&isbsi)); // can this happen?
+                
+                if (sbtn)
+                    bc_release(bc, btn_block(sbtn));
+            }
+            
+            *bsi = ibsi;
+            
+            bc_dirty(bc, btn_block(bt->bt_root));
+        }
+        
+        bc_release(bc, btn_block(child));
+        child = NULL;
     }
     
+out:
     return 0;
     
 error_out:
+    if (child)
+        bc_release(bc, btn_block(child));
+    
     return err;
 }
 
@@ -1438,17 +1526,13 @@ did_split:
         
         if (bsi->bsi_split_index2) {
             btip->bti_nnodes++;
-            if (btr_phys_size(bsi->bsi_split_index2) > rbtnp->btnp_freespace) {
-                // we need to split *again* here
-                err = btn_insert_split(rbtn, bsi->bsi_split_index2, &bsi2);
-                assert(!err);
+            err = btn_insert(rbtn, bsi->bsi_split_index2, &bsi2);
+            assert(!err);
+            if (bsi_did_split(&bsi2)) { // might split again here
                 assert(!bsi2.bsi_split_index2); // can't/won't split a third time
                 bsi = &bsi2;
                 goto did_split;
             }
-            // don't need to split again. just insert the record
-            err = btn_insert_record(rbtn, bsi->bsi_split_index2);
-            assert(!err);
         }
     }
     
@@ -1518,6 +1602,11 @@ int _bt_find(btree_t *bt, btn_t *btn, btr_phys_t *to_find, btr_phys_t **record) 
                 break;
             index_ptr = btr_phys_index_ptr(btrp);
             btrp = btr_phys_next_record(btrp);
+        }
+        
+        if (!index_ptr) {
+            err = ENOENT;
+            goto error_out;
         }
         
         // get the child node
@@ -1654,13 +1743,12 @@ static int _bt_iterate_disk(int fd, uint64_t rblkno, uint8_t *buf, uint32_t blks
             }
         } else { // index node: add all children to fifo
             first_index_ptr = btn_phys_first_index_record_ptr(btnp);
-            if (first_index_ptr) {
+            if (first_index_ptr) { 
                 blknos[curr_ind] = first_index_ptr;
                 err = fi_enq(fi, (void *)&blknos[curr_ind++]);
                 if (err)
                     goto error_out;
             }
-            
             btrp = btn_phys_first_record(btnp);
             for (int i = 0; i < btnp->btnp_nrecords; i++) {
                 blknos[curr_ind] = btr_phys_index_ptr(btrp);
