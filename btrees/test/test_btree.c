@@ -99,136 +99,6 @@ static int tbt_check_disk(const char *path) {
     return bt_iterate_disk(path, NULL, NULL, _tbt_check_record_cb, (void *)&curr);
 }
 
-// just do inserts
-static void test_node_splitting_random(int nops) {
-    btree_t *bt;
-    tbr0_t *tbr0;
-    tbr0_phys_t **tbr0_recs, **tbr0_search_recs, *tbr0p_found;
-    uint8_t tbr0_kstr[sizeof(uint64_t) + 1], tbr0_vstr[sizeof(uint64_t) + 1], *k, *v;
-    tbr1_t *tbr1;
-    tbr1_phys_t *tbr1_recs, *tbr1_search_recs;
-    char *fname, *tname = "test_node_splitting_random";
-    uint64_t rndk, rndv;
-    size_t n = nops;
-    
-    printf("%s (n %llu)\n", tname, n);
-    
-    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
-    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
-    
-    assert(bt_create(fname) == 0);
-    
-    //bt_dump_disk(fname);
-    
-    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
-    
-    assert(tbr0_recs = malloc(sizeof(tbr0_phys_t *) * n));
-    memset(tbr0_recs, 0, sizeof(tbr0_phys_t *) * n);
-    
-    assert(tbr1_recs = malloc(sizeof(tbr1_phys_t) * n));
-    memset(tbr1_recs, 0, sizeof(tbr1_phys_t) * n);
-    
-    for (int i = 0; i < n; i++) {
-        rndk = (uint64_t)rand() << 32 | rand();
-        rndv = (uint64_t)rand() << 32 | rand();
-        if (rand() % 2) { // insert a tbr0 record
-            // make random key and val based on rndk, rndv
-            for (int j = 0; j < sizeof(uint64_t); j++) {
-                tbr0_kstr[j] = *((uint8_t *)&rndk + j) % 90 + 33;
-                tbr0_vstr[j] = *((uint8_t *)&rndv + j) % 90 + 33;
-            }
-            tbr0_kstr[sizeof(uint64_t)] = 0;
-            tbr0_vstr[sizeof(uint64_t)] = 0;
-            // insert it
-            //printf("building tbr0 kstr %s vstr %s\n", &tbr0_kstr[0], &tbr0_vstr[0]);
-            assert(tbr0_build_record(&tbr0_kstr[0], &tbr0_vstr[0], &tbr0_recs[i]) == 0);
-            assert(tbr0_insert(bt, tbr0_recs[i]) == 0);
-        } else { // insert a tbr1 record
-            //printf("building tbr1 rndk %llu rndv %llu\n", rndk, rndv);
-            assert(tbr1_build_record(rndk, rndv, &tbr1_recs[i]) == 0);
-            assert(tbr1_insert(bt, &tbr1_recs[i]) == 0);
-        }
-        //bt_dump(bt);
-        //tbt_dump(bt);
-        //bt_check(bt);
-    }
-    
-    // make sure we can find everything:
-    
-    assert(tbr0_search_recs = malloc(sizeof(tbr0_phys_t *) * n));
-    memset(tbr0_search_recs, 0, sizeof(tbr0_phys_t *) * n);
-    
-    assert(tbr1_search_recs = malloc(sizeof(tbr1_phys_t) * n));
-    memset(tbr1_search_recs, 0, sizeof(tbr1_phys_t) * n);
-    
-    for (int i = 0; i < n; i++) {
-        if (tbr0_recs[i]) {
-            assert(tbr0_build_record((uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t), NULL, &tbr0_search_recs[i]) == 0);
-            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
-            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
-            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
-            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
-                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
-            tbr0_release(tbr0);
-        } else {
-            assert(tbr1_build_record(tbr1_recs[i].tbr1_key.tbr1_id, 0, &tbr1_search_recs[i]) == 0);
-            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
-            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
-                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
-            tbr1_release(tbr1);
-        }
-        //bt_check(bt);
-    }
-    
-    // close the btree:
-    assert(bt_close(bt) == 0);
-    bt = NULL;
-    
-    //bt_dump_disk(fname);
-    //tbt_dump_disk(fname);
-    assert(bt_check_disk(fname) == 0);
-    assert(tbt_check_disk(fname) == 0);
-    
-    // re-open and check we can find everything again
-    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
-    bt_check(bt);
-    
-    for (int i = 0; i < n; i++) {
-        if (tbr0_recs[i]) {
-            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
-            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
-            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
-            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
-                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
-            tbr0_release(tbr0);
-        } else {
-            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
-            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
-                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
-            tbr1_release(tbr1);
-        }
-        //bt_check(bt);
-    }
-    
-    // close the btree:
-    assert(bt_close(bt) == 0);
-    bt = NULL;
-    
-    assert(bt_check_disk(fname) == 0);
-    assert(tbt_check_disk(fname) == 0);
-    
-    assert(bt_destroy(fname) == 0);
-    
-    for (int i = 0; i < n; i++) {
-        free(tbr0_recs[i]);
-        free(tbr0_search_recs[i]);
-    }
-    free(tbr0_recs);
-    free(tbr1_recs);
-    free(tbr1_search_recs);
-    free(fname);
-}
-
 // just insert two records and make sure you can retrieve them
 static void test_specific_case1(void) {
     btree_t *bt;
@@ -1196,8 +1066,359 @@ static void test_specific_cases(void) {
     test_specific_remove_cases();
 }
 
+// just do inserts
+static void test_node_splitting_random(int nops) {
+    btree_t *bt;
+    tbr0_t *tbr0;
+    tbr0_phys_t **tbr0_recs, **tbr0_search_recs, *tbr0p_found;
+    uint8_t tbr0_kstr[sizeof(uint64_t) + 1], tbr0_vstr[sizeof(uint64_t) + 1], *k, *v;
+    tbr1_t *tbr1;
+    tbr1_phys_t *tbr1_recs, *tbr1_search_recs;
+    char *fname, *tname = "test_node_splitting_random";
+    uint64_t rndk, rndv;
+    size_t n = nops;
+    
+    printf("%s (n %llu)\n", tname, n);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    
+    assert(tbr0_recs = malloc(sizeof(tbr0_phys_t *) * n));
+    memset(tbr0_recs, 0, sizeof(tbr0_phys_t *) * n);
+    
+    assert(tbr1_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_recs, 0, sizeof(tbr1_phys_t) * n);
+    
+    for (int i = 0; i < n; i++) {
+        rndk = (uint64_t)rand() << 32 | rand();
+        rndv = (uint64_t)rand() << 32 | rand();
+        if (rand() % 2) { // insert a tbr0 record
+            // make random key and val based on rndk, rndv
+            for (int j = 0; j < sizeof(uint64_t); j++) {
+                tbr0_kstr[j] = *((uint8_t *)&rndk + j) % 90 + 33;
+                tbr0_vstr[j] = *((uint8_t *)&rndv + j) % 90 + 33;
+            }
+            tbr0_kstr[sizeof(uint64_t)] = 0;
+            tbr0_vstr[sizeof(uint64_t)] = 0;
+            // insert it
+            //printf("building tbr0 kstr %s vstr %s\n", &tbr0_kstr[0], &tbr0_vstr[0]);
+            assert(tbr0_build_record(&tbr0_kstr[0], &tbr0_vstr[0], &tbr0_recs[i]) == 0);
+            assert(tbr0_insert(bt, tbr0_recs[i]) == 0);
+        } else { // insert a tbr1 record
+            //printf("building tbr1 rndk %llu rndv %llu\n", rndk, rndv);
+            assert(tbr1_build_record(rndk, rndv, &tbr1_recs[i]) == 0);
+            assert(tbr1_insert(bt, &tbr1_recs[i]) == 0);
+        }
+        //bt_dump(bt);
+        //tbt_dump(bt);
+        //bt_check(bt);
+    }
+    
+    // make sure we can find everything:
+    
+    assert(tbr0_search_recs = malloc(sizeof(tbr0_phys_t *) * n));
+    memset(tbr0_search_recs, 0, sizeof(tbr0_phys_t *) * n);
+    
+    assert(tbr1_search_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_search_recs, 0, sizeof(tbr1_phys_t) * n);
+    
+    for (int i = 0; i < n; i++) {
+        if (tbr0_recs[i]) {
+            assert(tbr0_build_record((uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t), NULL, &tbr0_search_recs[i]) == 0);
+            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
+            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
+            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+            tbr0_release(tbr0);
+        } else {
+            assert(tbr1_build_record(tbr1_recs[i].tbr1_key.tbr1_id, 0, &tbr1_search_recs[i]) == 0);
+            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
+            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
+                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
+            tbr1_release(tbr1);
+        }
+        //bt_check(bt);
+    }
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    //bt_dump_disk(fname);
+    //tbt_dump_disk(fname);
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    
+    // re-open and check we can find everything again
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    for (int i = 0; i < n; i++) {
+        if (tbr0_recs[i]) {
+            assert(tbr0_get(bt, tbr0_search_recs[i], &tbr0) == 0);
+            k = (uint8_t *)&tbr0_recs[i]->tbr0_key + sizeof(tbr0_key_phys_t);
+            v = k + tbr0_recs[i]->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+            assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                    !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+            tbr0_release(tbr0);
+        } else {
+            assert(tbr1_get(bt, &tbr1_search_recs[i], &tbr1) == 0);
+            assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_recs[i].tbr1_key.tbr1_id &&
+                   tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_recs[i].tbr1_val.tbr1_data);
+            tbr1_release(tbr1);
+        }
+        //bt_check(bt);
+    }
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    for (int i = 0; i < n; i++) {
+        free(tbr0_recs[i]);
+        free(tbr0_search_recs[i]);
+    }
+    free(tbr0_recs);
+    free(tbr1_recs);
+    free(tbr1_search_recs);
+    free(fname);
+}
+
+typedef struct tbt_thr_start_arg {
+    thread_t *t;
+    btree_t *bt;
+    int num_ops;
+} tbt_thr_start_arg_t;
+
+static int tbt_thr_start(void *arg) {
+    tbt_thr_start_arg_t *targ = (tbt_thr_start_arg_t *)arg;
+    thread_t *t = targ->t;
+    tbr0_t *tbr0;
+    tbr0_phys_t **tbr0_recs, *tbr0_rec, *tbr0_search_rec, *tbr0p_found;
+    uint8_t tbr0_kstr[sizeof(uint64_t) + 1], tbr0_vstr[sizeof(uint64_t) + 1], *k, *v;
+    tbr1_t *tbr1;
+    tbr1_phys_t *tbr1_recs, tbr1_rec, tbr1_search_rec;
+    uint64_t rndk, rndv;
+    btree_t *bt = targ->bt;
+    int op, rtype, n, err, ind, inserts = 0, finds = 0, removes = 0;
+    
+    n = targ->num_ops;
+    //printf("  thread %s started (n %d)\n", t->t_name, n);
+    
+    assert(tbr0_recs = malloc(sizeof(tbr0_phys_t *) * n));
+    memset(tbr0_recs, 0, sizeof(tbr0_phys_t *) * n);
+    assert(tbr1_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_recs, 0, sizeof(tbr1_phys_t) * n);
+    
+    for (int i = 0; i < n; i++) {
+        op = rand() % 3;
+        rtype = rand() % 2;
+        if (i == 0 || op == 0) { // insert
+insert:
+            rndk = (uint64_t)rand() << 32 | rand();
+            rndv = (uint64_t)rand() << 32 | rand();
+            if (rtype) { // insert a tbr0 record
+                //printf("  thread %s inserting tbr0\n", t->t_name);
+                for (int j = 0; j < sizeof(uint64_t); j++) {
+                    tbr0_kstr[j] = *((uint8_t *)&rndk + j) % 90 + 33;
+                    tbr0_vstr[j] = *((uint8_t *)&rndv + j) % 90 + 33;
+                }
+                tbr0_kstr[sizeof(uint64_t)] = 0;
+                tbr0_vstr[sizeof(uint64_t)] = 0;
+                assert(tbr0_build_record(&tbr0_kstr[0], &tbr0_vstr[0], &tbr0_recs[i]) == 0);
+                err = tbr0_insert(bt, tbr0_recs[i]);
+                assert(err == 0 || err == EEXIST);
+                if (err == EEXIST) { // try again. this should not happen often
+                    free(tbr0_recs[i]);
+                    tbr0_recs[i] = NULL;
+                    goto insert;
+                }
+            } else { // insert a tbr1 record
+                //printf("  thread %s inserting tbr1\n", t->t_name);
+                assert(tbr1_build_record(rndk, rndv, &tbr1_recs[i]) == 0);
+                err = tbr1_insert(bt, &tbr1_recs[i]);
+                assert(err == 0 || err == EEXIST);
+                if (err == EEXIST) { // try again. this should not happen often
+                    memset(&tbr1_recs[i], 0, sizeof(tbr1_phys_t));
+                    goto insert;
+                }
+            }
+            inserts++;
+        } else if (op == 1) { // find
+            ind = rand() % i;
+            if (rtype) {
+                tbr0_rec = NULL;
+                for (int j = 0; j < i; j++) {
+                    if (tbr0_recs[ind]) {
+                        tbr0_rec = tbr0_recs[ind];
+                        break;
+                    }
+                    ind = (ind + 1) % i;
+                }
+                if (!tbr0_rec) // no recs yet
+                    goto insert;
+                
+                //printf("  thread %s finding tbr0\n", t->t_name);
+                assert(tbr0_build_record((uint8_t *)&tbr0_rec->tbr0_key + sizeof(tbr0_key_phys_t), NULL, &tbr0_search_rec) == 0);
+                assert(tbr0_get(bt, tbr0_search_rec, &tbr0) == 0);
+                k = (uint8_t *)&tbr0_rec->tbr0_key + sizeof(tbr0_key_phys_t);
+                v = k + tbr0_rec->tbr0_key.tbr0_kstrlen + sizeof(tbr0_val_phys_t);
+                assert(!strcmp(k, (uint8_t *)tbr0->tbr0_key + sizeof(tbr0_key_phys_t)) &&
+                        !strcmp(v, (uint8_t *)tbr0->tbr0_val + sizeof(tbr0_val_phys_t)));
+                
+                tbr0_release(tbr0);
+                free(tbr0_search_rec);
+            } else {
+                memset(&tbr1_rec, 0, sizeof(tbr1_phys_t));
+                for (int j = 0; j < i; j++) {
+                    if (tbr1_recs[ind].tbr1_key.tbr1_id) {
+                        memcpy(&tbr1_rec, &tbr1_recs[ind], sizeof(tbr1_phys_t));
+                        break;
+                    }
+                    ind = (ind + 1) % i;
+                }
+                if (!tbr1_rec.tbr1_key.tbr1_id) // no recs yet
+                    goto insert;
+                
+                //printf("  thread %s finding tbr1\n", t->t_name);
+                assert(tbr1_build_record(tbr1_rec.tbr1_key.tbr1_id, 0, &tbr1_search_rec) == 0);
+                assert(tbr1_get(bt, &tbr1_search_rec, &tbr1) == 0);
+                assert(tbr1_phys(tbr1)->tbr1_key.tbr1_id == tbr1_rec.tbr1_key.tbr1_id &&
+                       tbr1_phys(tbr1)->tbr1_val.tbr1_data == tbr1_rec.tbr1_val.tbr1_data);
+                
+                tbr1_release(tbr1);
+            }
+            finds++;
+        } else { // remove
+            ind = rand() % i;
+            if (rtype) {
+                tbr0_rec = NULL;
+                for (int j = 0; j < i; j++) {
+                    if (tbr0_recs[ind]) {
+                        tbr0_rec = tbr0_recs[ind];
+                        break;
+                    }
+                    ind = (ind + 1) % i;
+                }
+                if (!tbr0_rec) // no recs yet
+                    goto insert;
+                
+                //printf("  thread %s removing tbr0\n", t->t_name);
+                assert(tbr0_build_record((uint8_t *)&tbr0_rec->tbr0_key + sizeof(tbr0_key_phys_t), NULL, &tbr0_search_rec) == 0);
+                assert(tbr0_remove(bt, tbr0_search_rec) == 0);
+                free(tbr0_recs[ind]);
+                tbr0_recs[ind] = NULL;
+                free(tbr0_search_rec);
+            } else {
+                memset(&tbr1_rec, 0, sizeof(tbr1_phys_t));
+                for (int j = 0; j < i; j++) {
+                    if (tbr1_recs[ind].tbr1_key.tbr1_id) {
+                        memcpy(&tbr1_rec, &tbr1_recs[ind], sizeof(tbr1_phys_t));
+                        break;
+                    }
+                    ind = (ind + 1) % i;
+                }
+                if (!tbr1_rec.tbr1_key.tbr1_id) // no recs yet
+                    goto insert;
+                
+                //printf("  thread %s removing tbr1\n", t->t_name);
+                assert(tbr1_build_record(tbr1_rec.tbr1_key.tbr1_id, 0, &tbr1_search_rec) == 0);
+                assert(tbr1_remove(bt, &tbr1_search_rec) == 0);
+                memset(&tbr1_recs[ind], 0, sizeof(tbr1_phys_t));
+            }
+            removes++;
+        }
+
+        // sync every so often
+        if ((i % 128) == 0)
+            assert(bt_sync(bt) == 0);
+        
+        //bt_check(bt);
+#if 1
+        if (i && (i % 16384) == 0)
+            printf("  thread %s through iter %d (inserts %d finds %d removes %d)\n", t->t_name, i, inserts, finds, removes);
+            
+#endif
+    }
+    
+    for (int i = 0; i < n; i++) {
+        free(tbr0_recs[i]);
+    }
+    free(tbr0_recs);
+    free(tbr1_recs);
+    
+    return 0;
+}
+
+static void test_random(int nops) {
+    btree_t *bt;
+    char thr_name[5];
+    thread_t *threads[8];
+    tbt_thr_start_arg_t targ[8];
+    char *fname, *tname = "test_random";
+    int n = nops;
+    
+    printf("%s (n %d)\n", tname, n);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    // spawn 8 threads, have them each do num_ops / 8 random operations
+    for (int i = 0; i < 8; i++) {
+        sprintf(thr_name, "%s%d", "thr", i);
+        assert(threads[i] = thread_create(thr_name));
+        
+        memset(&targ[i], 0, sizeof(tbt_thr_start_arg_t));
+        targ[i].t = threads[i];
+        targ[i].bt = bt;
+        targ[i].num_ops = n / 8;
+        
+        assert(thread_start(threads[i], tbt_thr_start, &targ[i]) == 0);
+    }
+    
+    for (int i = 0; i < 8; i++)
+        assert(thread_wait(threads[i], NULL) == 0);
+    
+    for (int i = 0; i < 8; i++)
+        thread_destroy(threads[i]);
+    
+    bt_check(bt);
+    //bt_dump(bt);
+    //tbt_dump(bt);
+    
+    assert(bt_close(bt) == 0);
+    
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    //tbt_dump_disk(fname);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    free(fname);
+}
+
 static void test_random_cases(int nops) {
     test_node_splitting_random(nops);
+    test_random(nops);
 }
 
 #define DEFAULT_NUM_OPS (1 << 10)

@@ -1023,7 +1023,7 @@ int btn_remove(btn_t *btn, btr_phys_t *to_remove) {
         if (comp == 0) {
             recsz = btr_phys_size(btrp);
             _btrp = btr_phys_next_record(btrp);
-            for (int j = i; j < btnp->btnp_nrecords; j++) {
+            for (int j = i + 1; j < btnp->btnp_nrecords; j++) {
                 tailsz += btr_phys_size(_btrp);
                 _btrp = btr_phys_next_record(_btrp);
             }
@@ -1565,11 +1565,22 @@ int _bt_insert(btree_t *bt, btn_t *btn, btr_phys_t *to_insert, btn_split_info_t 
             err = btn_insert(btn, cbsi.bsi_split_index1, &ibsi);
             assert(!err);
             
+            // it's our resonsibility to free these indexes:
+            free(cbsi.bsi_split_index1);
+            
             if (cbsi.bsi_split_index2) {
                 //
                 // child split into 3 nodes, so we have another index to insert
                 //
                 assert(!cbsi.bsi_split_index2); // TODO: support this. the below code should work?
+                //
+                // XXX: limiting key size would make the below cleaner. you should limit key size
+                // to prevent index nodes from ever splitting into 3 nodes. leaf nodes can still
+                // split into 3, but index nodes can only split into 2 if key size is limited to
+                // something like max_inline_record_size / 2. you'd still need the code below and
+                // to handle this case, but it would prevent the btn_insert below from ever causing
+                // a split, which is ideal
+                //
                 bip->bti_nnodes++;
                 if (bsi_did_split(&ibsi)) {
                     //
@@ -1597,7 +1608,9 @@ int _bt_insert(btree_t *bt, btn_t *btn, btr_phys_t *to_insert, btn_split_info_t 
                 err = btn_insert(sbtn ? sbtn : btn, cbsi.bsi_split_index2, &isbsi);
                 assert(!err);
                 
-                assert(!bsi_did_split(&isbsi)); // can this happen?
+                free(cbsi.bsi_split_index2);
+                
+                assert(!bsi_did_split(&isbsi)); // can this happen? not if we limit key size like i suggest above
                 
                 if (sbtn)
                     bc_release(bc, btn_block(sbtn));

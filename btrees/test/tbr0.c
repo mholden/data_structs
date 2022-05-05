@@ -113,6 +113,10 @@ int tbr0_get(btree_t *bt, tbr0_phys_t *to_find, tbr0_t **record) {
     return tbr_get(bt, (tbr_phys_t *)to_find, (tbr_t **)record);
 }
 
+int tbr0_remove(btree_t *bt, tbr0_phys_t *to_remove) {
+    return tbr_remove(bt, (tbr_phys_t *)to_remove);
+}
+
 void tbr0_release(tbr0_t *tbr0) {
     free(tbr0_phys(tbr0));
     rwl_destroy(tbr0->tbr0_rwlock);

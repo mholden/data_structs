@@ -52,6 +52,7 @@ tbr0_phys_t *tbr0_phys(tbr0_t *tbr0);
 
 int tbr0_insert(btree_t *bt, tbr0_phys_t *to_insert);
 int tbr0_get(btree_t *bt, tbr0_phys_t *to_find, tbr0_t **record);
+int tbr0_remove(btree_t *bt, tbr0_phys_t *to_remove);
 void tbr0_release(tbr0_t *tbr0);
 
 int tbr0_build_record(const char *kstr, const char *vstr, tbr0_phys_t **record);
