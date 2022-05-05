@@ -51,6 +51,7 @@ uint32_t tbr_type(tbr_t *tbr);
 
 int tbr_insert(btree_t *bt, tbr_phys_t *to_insert);
 int tbr_get(btree_t *bt, tbr_phys_t *to_find, tbr_t **record);
+int tbr_remove(btree_t *bt, tbr_phys_t *to_remove);
 void tbr_release(tbr_t *tbr);
 
 #endif // _TBR_H_

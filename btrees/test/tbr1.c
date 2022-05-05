@@ -79,6 +79,10 @@ int tbr1_get(btree_t *bt, tbr1_phys_t *to_find, tbr1_t **record) {
     return tbr_get(bt, (tbr_phys_t *)to_find, (tbr_t **)record);
 }
 
+int tbr1_remove(btree_t *bt, tbr1_phys_t *to_remove) {
+    return tbr_remove(bt, (tbr_phys_t *)to_remove);
+}
+
 void tbr1_release(tbr1_t *tbr1) {
     free(tbr1_phys(tbr1));
     rwl_destroy(tbr1->tbr1_rwlock);

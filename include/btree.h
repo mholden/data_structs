@@ -105,6 +105,7 @@ struct btree {
 
 int bt_create(const char *path);
 int bt_open(const char *path, bt_ops_t *ops, btree_t **bt);
+int bt_sync(btree_t *bt);
 int bt_close(btree_t *bt);
 int bt_destroy(const char *path);
 
@@ -124,6 +125,7 @@ void bt_check(btree_t *bt);
 int bt_check_disk(const char *path);
 
 uint16_t bt_max_inline_record_size(btree_t *bt);
+bt_info_phys_t *bt_info(btree_t *bt);
 
 #define ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 #define ROUND_DOWN(N, S) ((N / S) * S)
@@ -155,6 +157,8 @@ bool btn_is_root(btn_t *btn);
 int btn_insert(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi);
 int btn_insert_split(btn_t *btn, btr_phys_t *to_insert, btn_split_info_t *bsi);
 int btn_insert_first_index_record(btn_t *btn, uint64_t ptr, btr_phys_t *to_insert);
+int btn_remove(btn_t *btn, btr_phys_t *to_remove);
+int btn_free(btn_t *btn);
 bt_info_phys_t *btn_root_info(btn_t *btn);
 
 #endif // _BTREE_H_

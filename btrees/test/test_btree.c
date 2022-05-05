@@ -914,7 +914,7 @@ static void test_node_splitting_6(void) {
     free(fname);
 }
 
-static void test_specific_cases_node_splitting(void) {
+static void test_specific_splitting_cases(void) {
     test_node_splitting_1();
     test_node_splitting_2();
     test_node_splitting_3();
@@ -923,9 +923,277 @@ static void test_specific_cases_node_splitting(void) {
     test_node_splitting_6();
 }
 
+//
+// insert enough records to cause a split, then remove all of them to
+// trigger btn_free on the leaf nodes. then re-insert records to trigger
+// btn_alloc on the insert path
+//
+static void test_remove_case_3(void) {
+    btree_t *bt;
+    bt_info_phys_t *bip;
+    tbr1_t *tbr1;
+    tbr1_phys_t *tbr1_recs, *tbr1p;
+    char *fname, *tname = "test_remove_case_3";
+    size_t n;
+    
+    printf("%s\n", tname);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    n = bt_max_inline_record_size(bt) / sizeof(tbr1_phys_t) + 1;
+    
+    //printf("inserting %llu recs\n", n);
+    
+    assert(tbr1_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_recs, 0, sizeof(tbr1_phys_t) * n);
+
+    // insert
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, i, &tbr1_recs[i]) == 0);
+        assert(tbr1_insert(bt, &tbr1_recs[i]) == 0);
+        bt_check(bt);
+        //bt_dump(bt);
+        //tbt_dump(bt);
+    }
+    
+    bip = bt_info(bt);
+    assert(bip->bti_nnodes == 3);
+    
+    // make sure you can find everything
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, -1, &tbr1_recs[i]) == 0);
+        assert(tbr1_get(bt, &tbr1_recs[i], &tbr1) == 0);
+        tbr1p = tbr1_phys(tbr1);
+        assert((tbr1p->tbr1_key.tbr1_id == i) && (tbr1p->tbr1_val.tbr1_data == i));
+        tbr1_release(tbr1);
+    }
+    
+    // remove all. this should trigger free'ing the leaf nodes
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_remove(bt, &tbr1_recs[i]) == 0);
+        bt_check(bt);
+        // make sure you can still find everything you haven't removed
+        for (int j = i + 1; j < n; j++) {
+            assert(tbr1_get(bt, &tbr1_recs[j], &tbr1) == 0);
+            tbr1p = tbr1_phys(tbr1);
+            assert((tbr1p->tbr1_key.tbr1_id == j) && (tbr1p->tbr1_val.tbr1_data == j));
+            tbr1_release(tbr1);
+        }
+        //bt_dump(bt);
+        //tbt_dump(bt);
+    }
+    
+    // we should have freed the leaf nodes
+    assert(bip->bti_nnodes == 1);
+    
+    // sync and do a disk check
+    assert(bt_sync(bt) == 0);
+    assert(bt_check_disk(fname) == 0);
+    assert(tbt_check_disk(fname) == 0);
+    
+    // make sure we can't find anything anymore
+    for (int i = 0; i < n; i++)
+        assert(tbr1_get(bt, &tbr1_recs[i], &tbr1) == ENOENT);
+    
+    // and then re-insert to trigger re-allocating leaf nodes
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, i, &tbr1_recs[i]) == 0);
+        assert(tbr1_insert(bt, &tbr1_recs[i]) == 0);
+        bt_check(bt);
+    }
+    
+    assert(bip->bti_nnodes == 3);
+    
+    // make sure you can find everything
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, -1, &tbr1_recs[i]) == 0);
+        assert(tbr1_get(bt, &tbr1_recs[i], &tbr1) == 0);
+        tbr1p = tbr1_phys(tbr1);
+        assert((tbr1p->tbr1_key.tbr1_id == i) && (tbr1p->tbr1_val.tbr1_data == i));
+        tbr1_release(tbr1);
+    }
+
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
+    //tbt_dump_disk(fname);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    free(tbr1_recs);
+    free(fname);
+}
+
+// insert and remove a number of records but don't cause a split
+static void test_remove_case_2(void) {
+    btree_t *bt;
+    tbr1_t *tbr1;
+    tbr1_phys_t *tbr1_recs, *tbr1p;
+    char *fname, *tname = "test_remove_case_2";
+    size_t n;
+    
+    printf("%s\n", tname);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    n = bt_max_inline_record_size(bt) / sizeof(tbr1_phys_t);
+    
+    //printf("inserting %llu recs\n", n);
+    
+    assert(tbr1_recs = malloc(sizeof(tbr1_phys_t) * n));
+    memset(tbr1_recs, 0, sizeof(tbr1_phys_t) * n);
+
+    // insert
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, i, &tbr1_recs[i]) == 0);
+        assert(tbr1_insert(bt, &tbr1_recs[i]) == 0);
+        bt_check(bt);
+        //bt_dump(bt);
+        //tbt_dump(bt);
+    }
+    
+    //printf("before");
+    //bt_dump(bt);
+    //tbt_dump(bt);
+    
+    // make sure you can find everything
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_build_record(i, -1, &tbr1_recs[i]) == 0);
+        assert(tbr1_get(bt, &tbr1_recs[i], &tbr1) == 0);
+        tbr1p = tbr1_phys(tbr1);
+        assert((tbr1p->tbr1_key.tbr1_id == i) && (tbr1p->tbr1_val.tbr1_data == i));
+        tbr1_release(tbr1);
+    }
+    
+    // remove
+    for (int i = 0; i < n; i++) {
+        assert(tbr1_remove(bt, &tbr1_recs[i]) == 0);
+        bt_check(bt);
+        // make sure you can still find everything you haven't removed
+        for (int j = i + 1; j < n; j++) {
+            assert(tbr1_get(bt, &tbr1_recs[j], &tbr1) == 0);
+            tbr1p = tbr1_phys(tbr1);
+            assert((tbr1p->tbr1_key.tbr1_id == j) && (tbr1p->tbr1_val.tbr1_data == j));
+            tbr1_release(tbr1);
+        }
+        //printf("deleted %d\n", i);
+        //bt_dump(bt);
+        //tbt_dump(bt);
+    }
+    
+    // make sure we can't find anything anymore
+    for (int i = 0; i < n; i++)
+        assert(tbr1_get(bt, &tbr1_recs[i], &tbr1) == ENOENT);
+    
+    //printf("after\n");
+    //bt_dump(bt);
+    //tbt_dump(bt);
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
+    //tbt_dump_disk(fname);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    free(tbr1_recs);
+    free(fname);
+}
+
+// just insert and remove one record
+static void test_remove_case_1(void) {
+    btree_t *bt;
+    tbr1_t *tbr1;
+    tbr1_phys_t tbr1_rec, *tbr1p;
+    char *fname, *tname = "test_remove_case_1";
+    uint64_t data;
+    
+    printf("%s\n", tname);
+    
+    assert(fname = malloc(strlen(TEST_BTREE_DIR) + strlen(tname) + 2));
+    sprintf(fname, "%s/%s", TEST_BTREE_DIR, tname);
+    
+    assert(bt_create(fname) == 0);
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    
+    assert(bt_open(fname, &tbt_bt_ops, &bt) == 0);
+    bt_check(bt);
+    
+    data = (uint64_t)rand() << 32 | rand();
+    
+    // insert
+    assert(tbr1_build_record(data, data, &tbr1_rec) == 0);
+    assert(tbr1_insert(bt, &tbr1_rec) == 0);
+    bt_check(bt);
+    //bt_dump(bt);
+    //tbt_dump(bt);
+    
+    // verify we can find it
+    assert(tbr1_build_record(data, -1, &tbr1_rec) == 0);
+    assert(tbr1_get(bt, &tbr1_rec, &tbr1) == 0);
+    tbr1p = tbr1_phys(tbr1);
+    assert((tbr1p->tbr1_key.tbr1_id == data) && (tbr1p->tbr1_val.tbr1_data == data));
+    tbr1_release(tbr1);
+
+    // remove it
+    assert(tbr1_remove(bt, &tbr1_rec) == 0);
+    bt_check(bt);
+    //bt_dump(bt);
+    //tbt_dump(bt);
+    
+    // verify we can't find it
+    assert(tbr1_build_record(data, -1, &tbr1_rec) == 0);
+    assert(tbr1_get(bt, &tbr1_rec, &tbr1) == ENOENT);
+    
+    // close the btree:
+    assert(bt_close(bt) == 0);
+    bt = NULL;
+    
+    assert(bt_check_disk(fname) == 0);
+    //bt_dump_disk(fname);
+    assert(tbt_check_disk(fname) == 0);
+    //tbt_dump_disk(fname);
+    
+    assert(bt_destroy(fname) == 0);
+    
+    free(fname);
+}
+
+static void test_specific_remove_cases(void) {
+    test_remove_case_1();
+    test_remove_case_2();
+    test_remove_case_3();
+}
+
 static void test_specific_cases(void) {
     test_specific_case1();
-    test_specific_cases_node_splitting();
+    test_specific_splitting_cases();
+    test_specific_remove_cases();
 }
 
 static void test_random_cases(int nops) {

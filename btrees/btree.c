@@ -208,6 +208,36 @@ error_out:
     return err;
 }
 
+void bm_bfree(bm_t *bm, uint32_t bmind) {
+    btree_t *bt = bm->bm_bt;
+    bcache_t *bc = bt->bt_bc;
+    sm_t *sm = bt->bt_sm;
+    sm_phys_t *smp = sm->sm_phys;
+    bm_phys_t *bmp = bm_phys(bm);
+    uint8_t *byte, bit;
+    uint32_t blks_per_bm;
+    uint32_t bind, boff;
+    
+    assert(bmp->bmp_nfree);
+    
+    blks_per_bm = (smp->smp_bsz - sizeof(bm_phys_t)) * 8;
+    assert(bmind < blks_per_bm);
+    
+    bind = bmind / 8;
+    boff = bmind % 8;
+    
+    byte = (uint8_t *)bmp + sizeof(bm_phys_t) + bind;
+    bit = 1 << (7 - boff);
+    
+    assert(*byte & bit); // make sure it's set
+    *byte &= ~bit; // mark it free
+    
+    bmp->bmp_nfree++;
+    bc_dirty(bc, bm_block(bm));
+    
+    return;
+}
+
 
 //
 // space manager-related functions:
@@ -358,7 +388,39 @@ error_out:
 }
 
 static int sm_bfree(sm_t *sm, uint64_t blkno) {
-    assert(0);
+    btree_t *bt = sm->sm_bt;
+    bcache_t *bc = bt->bt_bc;
+    sm_phys_t *smp = sm_phys(sm);
+    bm_t *bm = NULL;
+    bm_phys_t *bmp;
+    uint16_t nbmblks, map_ind;
+    uint32_t blks_per_bm, mind, bmind;
+    uint64_t *smp_map, _blkno;
+    int err;
+    
+    assert(blkno < smp->smp_nblocks);
+    
+    blks_per_bm = (smp->smp_bsz - sizeof(bm_phys_t)) * 8;
+    smp_map = (uint64_t *)((uint8_t *)smp + sizeof(sm_phys_t));
+    mind = blkno / blks_per_bm;
+    bmind = blkno % blks_per_bm;
+    
+    err = bm_get(bt, smp_map[mind], &bm);
+    if (err)
+        goto error_out;
+    
+    bm_bfree(bm, bmind);
+    
+    bc_release(bc, bm_block(bm));
+    bm = NULL;
+    
+    return 0;
+    
+error_out:
+    if (bm)
+        bc_release(bc, bm_block(bm));
+    
+    return err;
 }
 
 
@@ -372,6 +434,10 @@ bool btn_phys_is_leaf(btn_phys_t *btnp) {
 
 bool btn_phys_is_root(btn_phys_t *btnp) {
     return (btnp->btnp_flags & BTN_PHYS_FLG_IS_ROOT);
+}
+
+bool btn_phys_is_empty(btn_phys_t *btnp) {
+    return (btnp->btnp_nrecords == 0);
 }
 
 int btn_phys_iterate_records(btn_phys_t *btnp, int (*callback)(btr_phys_t *btr, void *ctx, bool *stop), void *ctx) {
@@ -473,7 +539,7 @@ void btn_dump_phys(btn_t *btn) {
         printf("bti_nnodes %" PRIu32 " ", btip->bti_nnodes);
     }
     
-#if 1
+#if 0
     printf("btn_records:");
     btrp = btn_phys_first_record(btnp);
     if (!btn_is_leaf(btn) && (btnp->btnp_nrecords > 0))
@@ -494,6 +560,10 @@ bool btn_is_leaf(btn_t *btn) {
 
 bool btn_is_root(btn_t *btn) {
     return btn_phys_is_root(btn_phys(btn));
+}
+
+bool btn_is_empty(btn_t *btn) {
+    return btn_phys_is_empty(btn_phys(btn));
 }
 
 static bool bsi_did_split(btn_split_info_t *bsi) {
@@ -932,6 +1002,80 @@ error_out:
     return err;
 }
 
+int btn_remove(btn_t *btn, btr_phys_t *to_remove) {
+    btree_t *bt = btn->btn_bt;
+    bcache_t *bc = bt->bt_bc;
+    btn_phys_t *btnp = btn_phys(btn);
+    btr_phys_t *btrp, *_btrp;
+    uint16_t recsz, tailsz;
+    bool found;
+    int comp, err;
+    
+    btrp = btn_phys_first_record(btnp);
+    tailsz = 0;
+    found = false;
+    for (int i = 0; i < btnp->btnp_nrecords; i++) {
+        comp = bt->bt_ops->bto_compare_fn(to_remove, btrp);
+        if (comp < 0) {
+            err = ENOENT;
+            goto error_out;
+        }
+        if (comp == 0) {
+            recsz = btr_phys_size(btrp);
+            _btrp = btr_phys_next_record(btrp);
+            for (int j = i; j < btnp->btnp_nrecords; j++) {
+                tailsz += btr_phys_size(_btrp);
+                _btrp = btr_phys_next_record(_btrp);
+            }
+            found = true;
+            break;
+        }
+        btrp = btr_phys_next_record(btrp);
+    }
+    
+    if (!found) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    //
+    // btrp points to the record to be removed
+    //
+    if (tailsz) // shift existing records over to make room
+        memmove(btrp, (uint8_t *)btrp + recsz, tailsz);
+    
+    btnp->btnp_nrecords--;
+    btnp->btnp_freespace += recsz;
+    bc_dirty(bc, btn_block(btn));
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
+int btn_free(btn_t *btn) {
+    btree_t *bt = btn->btn_bt;
+    bcache_t *bc = bt->bt_bc;
+    sm_t *sm = bt->bt_sm;
+    sm_phys_t *smp = sm_phys(sm);
+    bt_info_phys_t *bip;
+    int err;
+    
+    err = sm_bfree(sm, btn_block(btn)->bl_blkno);
+    if (err)
+        goto error_out;
+    
+    bip = btn_root_info(bt->bt_root);
+    bip->bti_nnodes--;
+    bc_dirty(bc, btn_block(bt->bt_root));
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 bt_info_phys_t *btn_root_info(btn_t *btn) {
     btree_t *bt = btn->btn_bt;
     sm_t *sm = bt->bt_sm;
@@ -1013,6 +1157,10 @@ uint16_t bt_max_inline_record_size(btree_t *bt) {
     sm_t *sm = bt->bt_sm;
     sm_phys_t *smp = sm_phys(sm);
     return smp->smp_bsz - sizeof(btn_phys_t);
+}
+
+bt_info_phys_t *bt_info(btree_t *bt) {
+    return btn_root_info(bt->bt_root);
 }
 
 int bt_create(const char *path) {
@@ -1296,6 +1444,20 @@ error_out:
     return err;
 }
 
+int bt_sync(btree_t *bt) {
+    bcache_t *bc = bt->bt_bc;
+    int err;
+    
+    err = bc_flush(bc);
+    if (err)
+        goto error_out;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 int bt_close(btree_t *bt) {
     bcache_t *bc = bt->bt_bc;
     int err;
@@ -1362,18 +1524,31 @@ int _bt_insert(btree_t *bt, btn_t *btn, btr_phys_t *to_insert, btn_split_info_t 
             index_ptr = btr_phys_index_ptr(btrp);
             btrp = btr_phys_next_record(btrp);
         }
-        //
-        // i don't think it's possible for index_ptr to be 0 here,
-        // even though it is possible for btn_first_index_record_ptr
-        // to be 0.
-        // TODO: prove this with a test case
-        //
-        assert(index_ptr);
         
-        // get the child node
-        err = btn_get(bt, index_ptr, 0, 0, &child);
-        if (err)
-            goto error_out;
+        if (index_ptr == 0) {
+            //
+            // no index ptr. child must have been freed after a remove
+            // of its last record. allocate a new node for child
+            //
+            // would be nice to have a btn_level field in nodes so that
+            // we can assert we're at level 1 here
+            //
+            err = btn_alloc(bt, BTN_PHYS_FLG_IS_LEAF, &child);
+            if (err)
+                goto error_out;
+            
+            // update index ptr
+            memcpy((uint8_t *)btrp - sizeof(uint64_t), &btn_block(child)->bl_blkno, sizeof(uint64_t));
+            bc_dirty(bc, btn_block(btn));
+            
+            bip = btn_root_info(bt->bt_root);
+            bip->bti_nnodes++;
+            bc_dirty(bc, btn_block(bt->bt_root));
+        } else { // get the child node
+            err = btn_get(bt, index_ptr, 0, 0, &child);
+            if (err)
+                goto error_out;
+        }
         
         // recurse
         memset(&cbsi, 0, sizeof(btn_split_info_t));
@@ -1650,8 +1825,83 @@ int bt_update(btree_t *bt, btr_phys_t *to_update) {
     assert(0);
 }
 
+static int _bt_remove(btree_t *bt, btn_t *btn, btr_phys_t *to_remove) {
+    bcache_t *bc = bt->bt_bc;
+    btn_phys_t *btnp = btn_phys(btn);
+    btn_t *child = NULL;
+    btr_phys_t *btrp;
+    uint64_t index_ptr;
+    bt_info_phys_t *bip;
+    int comp, err;
+    
+    if (btn_is_leaf(btn)) {
+        err = btn_remove(btn, to_remove);
+        if (err)
+            goto error_out;
+    } else { // index
+        btrp = btn_first_record(btn);
+        index_ptr = btn_first_index_record_ptr(btn);
+        for (int i = 0; i < btnp->btnp_nrecords; i++) {
+            comp = bt->bt_ops->bto_compare_fn(to_remove, btrp);
+            if (comp < 0)
+                break;
+            index_ptr = btr_phys_index_ptr(btrp);
+            btrp = btr_phys_next_record(btrp);
+        }
+        
+        if (!index_ptr) {
+            err = ENOENT;
+            goto error_out;
+        }
+        
+        // get the child node
+        err = btn_get(bt, index_ptr, 0, 0, &child);
+        if (err)
+            goto error_out;
+        
+        // recurse
+        err = _bt_remove(bt, child, to_remove);
+        if (err)
+            goto error_out;
+        
+        if (btn_is_leaf(child) && btn_is_empty(child)) { // chlid leaf node is now empty. free it
+            err = btn_free(child);
+            if (err)
+                goto error_out;
+            
+            // set child index pointer to 0
+            memset((uint8_t *)btrp - sizeof(uint64_t), 0, sizeof(uint64_t));
+            bc_dirty(bc, btn_block(btn));
+        }
+        
+        bc_release(bc, btn_block(child));
+    }
+    
+    return 0;
+    
+error_out:
+    if (child)
+        bc_release(bc, btn_block(child));
+    
+    return err;
+}
+
 int bt_remove(btree_t *bt, btr_phys_t *to_remove) {
-    assert(0);
+    int err;
+    
+    bt_lock_exclusive(bt);
+    
+    err = _bt_remove(bt, bt->bt_root, to_remove);
+    if (err)
+        goto error_out;
+    
+    bt_unlock(bt);
+    
+    return 0;
+    
+error_out:
+    bt_unlock(bt);
+    return err;
 }
 
 static int _bt_iterate_disk(int fd, uint64_t rblkno, uint8_t *buf, uint32_t blksz, int (*node_callback)(btn_phys_t *node, void *ctx, bool *stop), void *node_ctx, int (*record_callback)(btr_phys_t *record, void *ctx, bool *stop), void *record_ctx) {
@@ -1659,7 +1909,7 @@ static int _bt_iterate_disk(int fd, uint64_t rblkno, uint8_t *buf, uint32_t blks
     bt_info_phys_t *btip;
     btr_phys_t *btrp;
     uint32_t nnodes, curr_ind;
-    uint64_t *blkno, *blknos = NULL, first_index_ptr;
+    uint64_t *blkno, *blknos = NULL, index_ptr;
     fifo_t *fi = NULL;
     ssize_t pret;
     bool stop = false;
@@ -1742,19 +1992,22 @@ static int _bt_iterate_disk(int fd, uint64_t rblkno, uint8_t *buf, uint32_t blks
                 }
             }
         } else { // index node: add all children to fifo
-            first_index_ptr = btn_phys_first_index_record_ptr(btnp);
-            if (first_index_ptr) { 
-                blknos[curr_ind] = first_index_ptr;
+            index_ptr = btn_phys_first_index_record_ptr(btnp);
+            if (index_ptr) {
+                blknos[curr_ind] = index_ptr;
                 err = fi_enq(fi, (void *)&blknos[curr_ind++]);
                 if (err)
                     goto error_out;
             }
             btrp = btn_phys_first_record(btnp);
             for (int i = 0; i < btnp->btnp_nrecords; i++) {
-                blknos[curr_ind] = btr_phys_index_ptr(btrp);
-                err = fi_enq(fi, (void *)&blknos[curr_ind++]);
-                if (err)
-                    goto error_out;
+                index_ptr = btr_phys_index_ptr(btrp);
+                if (index_ptr) {
+                    blknos[curr_ind] = index_ptr;
+                    err = fi_enq(fi, (void *)&blknos[curr_ind++]);
+                    if (err)
+                        goto error_out;
+                }
                 btrp = btr_phys_next_record(btrp);
             }
         }
@@ -2117,7 +2370,7 @@ typedef struct bt_cdn_cb_ctx {
     uint32_t nnodes;
 } bt_cdn_cb_ctx_t;
 
-static int _bt_dump_check_node_cb(btn_phys_t *btnp, void *ctx, bool *stop) {
+static int _bt_check_disk_node_cb(btn_phys_t *btnp, void *ctx, bool *stop) {
     bt_cdn_cb_ctx_t *btcd_ctx = (bt_cdn_cb_ctx_t *)ctx;
     sm_phys_t *smp = btcd_ctx->smp;
     uint8_t *bm = btcd_ctx->bm;
@@ -2175,10 +2428,14 @@ static int _bt_dump_check_node_cb(btn_phys_t *btnp, void *ctx, bool *stop) {
     
     if (!btn_phys_is_leaf(btnp)) {
         // mark all children as allocated in our bitmap
-        bt_cd_bm_set(bm, btn_phys_first_index_record_ptr(btnp));
+        index_ptr = btn_phys_first_index_record_ptr(btnp);
+        if (index_ptr)
+            bt_cd_bm_set(bm, index_ptr);
         btrp = btn_phys_first_record(btnp);
         for (int i = 0; i < btnp->btnp_nrecords; i++) {
-            bt_cd_bm_set(bm, btr_phys_index_ptr(btrp));
+            index_ptr = btr_phys_index_ptr(btrp);
+            if (index_ptr)
+                bt_cd_bm_set(bm, index_ptr);
             btrp = btr_phys_next_record(btrp);
         }
     }
@@ -2298,7 +2555,7 @@ int bt_check_disk(const char *path) {
     btcdn_ctx.bm = bm;
     
     bt_cd_bm_set(bm, smp->smp_rblkno);
-    err = _bt_iterate_disk(fd, smp->smp_rblkno, buf2, blksz, _bt_dump_check_node_cb, &btcdn_ctx, NULL, NULL);
+    err = _bt_iterate_disk(fd, smp->smp_rblkno, buf2, blksz, _bt_check_disk_node_cb, &btcdn_ctx, NULL, NULL);
     if (err)
         goto error_out;
     

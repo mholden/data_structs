@@ -118,6 +118,19 @@ error_out:
     return err;
 }
 
+int tbr_remove(btree_t *bt, tbr_phys_t *to_remove) {
+    int err;
+    
+    err = bt_remove(bt, (btr_phys_t *)to_remove);
+    if (err)
+        goto error_out;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 void tbr_release(tbr_t *tbr) {
     switch (tbr_type(tbr)) {
         case TBR_PHYS_KEY_TYPE_REC0:

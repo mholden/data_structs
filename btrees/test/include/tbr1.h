@@ -48,6 +48,7 @@ tbr1_phys_t *tbr1_phys(tbr1_t *tbr1);
 
 int tbr1_insert(btree_t *bt, tbr1_phys_t *to_insert);
 int tbr1_get(btree_t *bt, tbr1_phys_t *to_find, tbr1_t **record);
+int tbr1_remove(btree_t *bt, tbr1_phys_t *to_remove);
 void tbr1_release(tbr1_t *tbr1);
 
 int tbr1_build_record(uint64_t id, uint64_t data, tbr1_phys_t *record);
