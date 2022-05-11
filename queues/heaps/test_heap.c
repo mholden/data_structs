@@ -23,15 +23,15 @@ static int test_heap_compare(void *element1, void *element2) {
         return 0;
 }
 
-static int test_heap_destroy_element(void *element) {
+static void test_heap_destroy_element(void *element) {
     heap_element_t *he = (heap_element_t *)element;
     assert(he);
     free(he);
 }
 
-static void test_heap_dump_element(void *element, int ind) {
+static void test_heap_dump_element(void *element) {
     heap_element_t *he = (heap_element_t *)element;
-    printf(" he_key[%d]: %d\n", ind, he->he_key);
+    printf("%d ", he->he_key);
 }
 
 static heap_ops_t test_heap_ops = {

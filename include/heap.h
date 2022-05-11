@@ -2,13 +2,14 @@
 #define _HEAP_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #define HEAP_START_SIZE 64
 
 typedef struct heap_ops {
     int (*heap_compare)(void *element1, void *element2);
-    int (*heap_destroy_element)(void *element);
-    void (*heap_dump_element)(void *element, int ind);
+    void (*heap_destroy_element)(void *element);
+    void (*heap_dump_element)(void *element);
 } heap_ops_t;
 
 typedef struct heap {
@@ -24,6 +25,8 @@ void heap_destroy(heap_t *h);
 int heap_insert(heap_t *h, void *element);
 void *heap_top(heap_t *h);
 void *heap_pop(heap_t *h);
+
+bool heap_empty(heap_t *h);
 
 void heap_dump(heap_t *h);
 

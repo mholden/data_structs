@@ -144,12 +144,18 @@ out:
     return top;
 }
 
+bool heap_empty(heap_t *h) {
+    return (h->h_nelements == 0);
+}
+
 void heap_dump(heap_t *h) {
     printf("** heap @ %p **\n", h);
     printf("h_size: %d\n", h->h_size);
     printf("h_nelements: %d\n", h->h_nelements);
     printf("h_heap:\n");
     for (int i = 0; i < h->h_nelements; i++) {
-        h->h_ops->heap_dump_element(h->h_heap[i], i);
+        printf("[%d]: %p ", i, h->h_heap[i]);
+        h->h_ops->heap_dump_element(h->h_heap[i]);
+        //printf("\n");
     }
 }

@@ -230,6 +230,48 @@ error_out:
     return err;
 }
 
+int ll_first(linked_list_t *ll, void **data) {
+    ll_node_t *n;
+    int err;
+    
+    if (ll_empty(ll)) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    n = ll->ll_root;
+    *data = n->ln_data;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
+int ll_last(linked_list_t *ll, void **data) {
+    ll_node_t *curr, *prev;
+    int err;
+    
+    if (ll_empty(ll)) {
+        err = ENOENT;
+        goto error_out;
+    }
+    
+    prev = NULL;
+    curr = ll->ll_root;
+    while (curr) {
+        prev = curr;
+        curr = curr->ln_next;
+    }
+    
+    *data = prev->ln_data;
+    
+    return 0;
+    
+error_out:
+    return err;
+}
+
 int ll_get_random(linked_list_t *ll, void **data) {
     ll_node_t *n;
     size_t nnum;

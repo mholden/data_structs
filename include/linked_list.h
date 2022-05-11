@@ -31,6 +31,8 @@ int ll_insert_head(linked_list_t *ll, void *data);
 int ll_find(linked_list_t *ll, void *to_find, void **data);
 int ll_remove(linked_list_t *ll, void *to_remove);
 
+int ll_first(linked_list_t *ll, void **data);
+int ll_last(linked_list_t *ll, void **data);
 bool ll_empty(linked_list_t *ll);
 size_t ll_length(linked_list_t *ll);
 

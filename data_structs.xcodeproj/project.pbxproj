@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2A1A9E261CB06ED40080330D /* test_ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E021CB06E4A0080330D /* test_ud_graph.c */; };
-		2A1A9E271CB06ED40080330D /* ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E031CB06E4A0080330D /* ud_graph.c */; };
 		2A1A9E311CB0886F0080330D /* btree.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A1A9E2A1CB082450080330D /* btree.c */; };
 		2A36E4E8281ADC4100D1705F /* tbr0.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A36E4E5281ADC4000D1705F /* tbr0.c */; };
 		2A36E4E9281ADC4100D1705F /* tbr.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A36E4E6281ADC4000D1705F /* tbr.c */; };
@@ -33,6 +31,10 @@
 		2AB396C427E8B95000FF27A5 /* hash_table.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A590BFB1CF2A4F700FA4EBC /* hash_table.c */; };
 		2ACBAA9E27F7587100441F04 /* bcache.c in Sources */ = {isa = PBXBuildFile; fileRef = 2ACBAA9C27F7564F00441F04 /* bcache.c */; };
 		2ACBAA9F27F7587100441F04 /* test_bcache.c in Sources */ = {isa = PBXBuildFile; fileRef = 2ACBAA9727F7564F00441F04 /* test_bcache.c */; };
+		2AD9DF47282AB4A6004570BF /* ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AD9DF3E282AB3CE004570BF /* ud_graph.c */; };
+		2AD9DF48282AB4A6004570BF /* test_ud_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AD9DF3C282AB3CE004570BF /* test_ud_graph.c */; };
+		2AD9DF53282AB4BC004570BF /* udw_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AD9DF46282AB466004570BF /* udw_graph.c */; };
+		2AD9DF54282AB4BC004570BF /* test_udw_graph.c in Sources */ = {isa = PBXBuildFile; fileRef = 2AD9DF45282AB466004570BF /* test_udw_graph.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -126,12 +128,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		2AD9DF4E282AB4A9004570BF /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2A1A9DE21CB06C250080330D /* linked_lists */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = linked_lists; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A1A9E021CB06E4A0080330D /* test_ud_graph.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test_ud_graph.c; path = graphs/test_ud_graph.c; sourceTree = SOURCE_ROOT; };
-		2A1A9E031CB06E4A0080330D /* ud_graph.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ud_graph.c; path = graphs/ud_graph.c; sourceTree = SOURCE_ROOT; };
 		2A1A9E071CB06E5B0080330D /* ud_graph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ud_graph.h; path = include/ud_graph.h; sourceTree = SOURCE_ROOT; };
 		2A1A9E181CB06EB30080330D /* ud_graphs */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ud_graphs; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A1A9E241CB06EBA0080330D /* fifo */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = fifo; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -165,7 +174,6 @@
 		2A893D2A27ECA7A800F6B29F /* test_avl_tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test_avl_tree.c; path = avl_trees/test_avl_tree.c; sourceTree = SOURCE_ROOT; };
 		2A893D2B27ECA7A800F6B29F /* avl_tree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = avl_tree.c; path = avl_trees/avl_tree.c; sourceTree = SOURCE_ROOT; };
 		2A893D2C27ECA7A900F6B29F /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Makefile; path = avl_trees/Makefile; sourceTree = SOURCE_ROOT; };
-		2A893D2F27ECA84700F6B29F /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Makefile; path = graphs/Makefile; sourceTree = SOURCE_ROOT; };
 		2A893D3027ECA94D00F6B29F /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		2A893D4727ECB14500F6B29F /* binary_trees */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = binary_trees; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A893D5127ECB15C00F6B29F /* hash_tables */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hash_tables; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -181,6 +189,14 @@
 		2ACBAA9727F7564F00441F04 /* test_bcache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bcache.c; sourceTree = "<group>"; };
 		2ACBAA9827F7564F00441F04 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		2ACBAA9C27F7564F00441F04 /* bcache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bcache.c; sourceTree = "<group>"; };
+		2AD9DF2C282AB3AF004570BF /* udw_graph.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = udw_graph.h; sourceTree = "<group>"; };
+		2AD9DF3B282AB3CE004570BF /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		2AD9DF3C282AB3CE004570BF /* test_ud_graph.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ud_graph.c; sourceTree = "<group>"; };
+		2AD9DF3E282AB3CE004570BF /* ud_graph.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ud_graph.c; sourceTree = "<group>"; };
+		2AD9DF44282AB466004570BF /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		2AD9DF45282AB466004570BF /* test_udw_graph.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_udw_graph.c; sourceTree = "<group>"; };
+		2AD9DF46282AB466004570BF /* udw_graph.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = udw_graph.c; sourceTree = "<group>"; };
+		2AD9DF52282AB4A9004570BF /* uds_graphs */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = uds_graphs; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -254,6 +270,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2AD9DF4D282AB4A9004570BF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -278,6 +301,7 @@
 				2AB396BF27E507B800FF27A5 /* tests */,
 				2A893D4727ECB14500F6B29F /* binary_trees */,
 				2A893D5127ECB15C00F6B29F /* hash_tables */,
+				2AD9DF52282AB4A9004570BF /* uds_graphs */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -302,9 +326,8 @@
 		2A1A9E011CB06E330080330D /* graphs */ = {
 			isa = PBXGroup;
 			children = (
-				2A893D2F27ECA84700F6B29F /* Makefile */,
-				2A1A9E031CB06E4A0080330D /* ud_graph.c */,
-				2A1A9E021CB06E4A0080330D /* test_ud_graph.c */,
+				2AD9DF3A282AB3CE004570BF /* ud_graph */,
+				2AD9DF43282AB3CE004570BF /* udw_graph */,
 			);
 			name = graphs;
 			sourceTree = "<group>";
@@ -376,6 +399,7 @@
 				2AA8184D27DFAB310059F7FC /* heap.h */,
 				2A590BF71CF2A4ED00FA4EBC /* linked_list.h */,
 				2A1A9E071CB06E5B0080330D /* ud_graph.h */,
+				2AD9DF2C282AB3AF004570BF /* udw_graph.h */,
 			);
 			path = include;
 			sourceTree = SOURCE_ROOT;
@@ -444,6 +468,28 @@
 				2ACBAA9727F7564F00441F04 /* test_bcache.c */,
 			);
 			path = bcache;
+			sourceTree = SOURCE_ROOT;
+		};
+		2AD9DF3A282AB3CE004570BF /* ud_graph */ = {
+			isa = PBXGroup;
+			children = (
+				2AD9DF3B282AB3CE004570BF /* Makefile */,
+				2AD9DF3E282AB3CE004570BF /* ud_graph.c */,
+				2AD9DF3C282AB3CE004570BF /* test_ud_graph.c */,
+			);
+			name = ud_graph;
+			path = graphs/ud_graph;
+			sourceTree = SOURCE_ROOT;
+		};
+		2AD9DF43282AB3CE004570BF /* udw_graph */ = {
+			isa = PBXGroup;
+			children = (
+				2AD9DF44282AB466004570BF /* Makefile */,
+				2AD9DF46282AB466004570BF /* udw_graph.c */,
+				2AD9DF45282AB466004570BF /* test_udw_graph.c */,
+			);
+			name = udw_graph;
+			path = graphs/udw_graph;
 			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
@@ -619,6 +665,23 @@
 			productReference = 2AB396BF27E507B800FF27A5 /* tests */;
 			productType = "com.apple.product-type.tool";
 		};
+		2AD9DF49282AB4A9004570BF /* uds_graphs */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2AD9DF4F282AB4A9004570BF /* Build configuration list for PBXNativeTarget "uds_graphs" */;
+			buildPhases = (
+				2AD9DF4A282AB4A9004570BF /* Sources */,
+				2AD9DF4D282AB4A9004570BF /* Frameworks */,
+				2AD9DF4E282AB4A9004570BF /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = uds_graphs;
+			productName = data_structs;
+			productReference = 2AD9DF52282AB4A9004570BF /* uds_graphs */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -656,6 +719,7 @@
 				2AB396B627E507B800FF27A5 /* tests */,
 				2A893D3F27ECB14500F6B29F /* binary_trees */,
 				2A893D4927ECB15C00F6B29F /* hash_tables */,
+				2AD9DF49282AB4A9004570BF /* uds_graphs */,
 			);
 		};
 /* End PBXProject section */
@@ -674,8 +738,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2A1A9E261CB06ED40080330D /* test_ud_graph.c in Sources */,
-				2A1A9E271CB06ED40080330D /* ud_graph.c in Sources */,
+				2AD9DF47282AB4A6004570BF /* ud_graph.c in Sources */,
+				2AD9DF48282AB4A6004570BF /* test_ud_graph.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -754,6 +818,15 @@
 				2AB396C327E89C2E00FF27A5 /* avl_comparisons.cpp in Sources */,
 				2A893D3127ECA94D00F6B29F /* Makefile in Sources */,
 				2AB396C127E507FF00FF27A5 /* binary_tree.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2AD9DF4A282AB4A9004570BF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2AD9DF53282AB4BC004570BF /* udw_graph.c in Sources */,
+				2AD9DF54282AB4BC004570BF /* test_udw_graph.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -993,6 +1066,20 @@
 			};
 			name = Release;
 		};
+		2AD9DF50282AB4A9004570BF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		2AD9DF51282AB4A9004570BF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1091,6 +1178,15 @@
 			buildConfigurations = (
 				2AB396BD27E507B800FF27A5 /* Debug */,
 				2AB396BE27E507B800FF27A5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2AD9DF4F282AB4A9004570BF /* Build configuration list for PBXNativeTarget "uds_graphs" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2AD9DF50282AB4A9004570BF /* Debug */,
+				2AD9DF51282AB4A9004570BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
