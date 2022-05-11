@@ -438,6 +438,8 @@ static linked_list_ops_t spbf_ll_ops = {
 int udwg_shortest_path_bf(udw_graph_t *g, udwg_node_t *from, udwg_node_t *to, linked_list_t **path) {
     heap_t *pq = NULL; // priority queue
     linked_list_t *_path = NULL;
+    avl_tree_t *visited = NULL;
+    avl_tree_ops_t at_ops;
     udwg_edge_t *edge;
     udwg_node_t *node;
     udwg_spbf_cb_ctx_t gsp_ctx;
@@ -446,6 +448,15 @@ int udwg_shortest_path_bf(udw_graph_t *g, udwg_node_t *from, udwg_node_t *to, li
     
     pq = heap_create(&spbf_pq_ops);
     if (!pq) {
+        err = ENOMEM;
+        goto error_out;
+    }
+    
+    memset(&at_ops, 0, sizeof(avl_tree_ops_t));
+    at_ops.ato_compare_fn = udwg_compare_nodes;
+    
+    visited = at_create(&at_ops);
+    if (!visited) {
         err = ENOMEM;
         goto error_out;
     }
@@ -466,6 +477,7 @@ int udwg_shortest_path_bf(udw_graph_t *g, udwg_node_t *from, udwg_node_t *to, li
         goto error_out;
     
     ll_destroy(_path);
+    _path = NULL;
     
     while (!heap_empty(pq)) {
         _path = heap_pop(pq);
@@ -484,18 +496,22 @@ int udwg_shortest_path_bf(udw_graph_t *g, udwg_node_t *from, udwg_node_t *to, li
         
         node = edge->e_adj;
         
-        //
-        // XX: could further optimize this by keeping track of all nodes we've visited +
-        // the shortest path we've seen to that node. if we've visited this node already
-        // and the shortest path we have stored for it is less that udwg_path_len(_path)
-        // then there's no point in further exploring this path
-        //
-        
-        gsp_ctx.path = _path;
-        err = at_iterate(node->n_adjs, udwg_spbf_cb, &gsp_ctx);
-        if (err)
-            goto error_out;
-        
+        if (at_find(visited, (void *)node, NULL) != 0) {
+            //
+            // if this is the first time we've seen 'node', then _path is the shortest path to
+            // node. mark it as visited. if we see it again, it will be on a path that is not
+            // the shortest path to node, and that path is not worth exploring further.
+            //
+            gsp_ctx.path = _path;
+            err = at_iterate(node->n_adjs, udwg_spbf_cb, &gsp_ctx);
+            if (err)
+                goto error_out;
+            
+            err = at_insert(visited, (void *)node);
+            if (err)
+                goto error_out;
+        }
+            
         ll_destroy(_path);
     }
     
@@ -506,6 +522,7 @@ int udwg_shortest_path_bf(udw_graph_t *g, udwg_node_t *from, udwg_node_t *to, li
     
 out:
     heap_destroy(pq);
+    at_destroy(visited);
     
     *path = gsp_ctx.best_path;
     
@@ -516,6 +533,8 @@ error_out:
         heap_destroy(pq);
     if (_path)
         ll_destroy(_path);
+    if (visited)
+        at_destroy(visited);
     
     return err;
 }
